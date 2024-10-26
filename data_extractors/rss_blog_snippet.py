@@ -12,25 +12,25 @@ class RSSParser:
     
     def fetch_feed(self):
         try:
-            xml_response = requests.get(self.rss_feed_link)
+            parsed_response = feedparser.parse(self.rss_feed_link)
+            if "channel" not in parsed_response or len(parsed_response["channel"]) == 0:
+                raise RuntimeError(f"{self.rss_feed_link} did not respond or channel tag was not present")
         except:
-            logging.error(f"Issue in fetching from RSS Feed: Status code - {xml_response.status_code} rss feed - {self.rss_feed_link}")
+            logging.error(f"{self.rss_feed_link} did not respond or channel tag was not present")
             return None
 
-        return xml_response.content
-
-    def parse_rss_info(self, rss_xml_response):
-        if rss_xml_response == None:
+        return parsed_response
+    
+    def parse_rss_info(self, parsed_rss):
+        if parsed_rss == None:
             return
         
-        parsed_rss = feedparser.parse(rss_xml_response)
-        print(f"RSS VERSION {parsed_rss.version}")
-
-        rss_name = parsed_rss.feed.title
-        rss_link = parsed_rss.feed.link
-
+        rss_name = parsed_rss["channel"]["title"]
+        rss_link = parsed_rss["channel"]["link"]
+        
         if "description" not in parsed_rss["channel"]:
-            rss_description = ""
+            logging.debug(f"{self.rss_feed_link} does not have feed description")
+            rss_description = rss_name
         else:
             rss_description = parsed_rss["channel"]["description"]
 
@@ -38,19 +38,35 @@ class RSSParser:
         
         return rss_info
 
-    def parse_rss_blog_info(self, rss_xml_response):
+    def parse_rss_blog_info(self, parsed_rss):
         
-        parsed_rss = feedparser.parse(rss_xml_response)
-        all_blog_items = parsed_rss.entries
+        all_blog_items = parsed_rss["items"]
 
         all_blog_info = []
         for blog_item in all_blog_items:
-            blog_title = blog_item.title
-            blog_link = blog_item.link
-            blog_publication_date = blog_item.published
-            blog_description = blog_item.description
+            blog_title = blog_item["title"]
+            blog_link = blog_item["link"]
+
+            if "description" not in blog_item:
+                logging.debug(f"{self.rss_feed_link} : {blog_title} has no accessible description")
+                blog_description = blog_title
+            else:
+                blog_description = blog_item["description"]
+
+            if "published" in blog_item:
+                blog_publication_date = blog_item["published"]
+            else:
+                logging.debug(f"{self.rss_feed_link} : {blog_title} has no accessible publication date")
+                blog_publication_date = None
             
-            blog_tags = list(blog_item.feed.categories)
+            blog_tags = []
+
+            if "tags" not in blog_item:
+                logging.debug(f"{self.rss_feed_link} : {blog_title} has no accessible tags")
+                
+            else:
+                for tag in blog_item["tags"]:
+                    blog_tags.append(tag["term"])
 
             rss_blog_info = RSSBlogSnippet(
                 title=blog_title,
@@ -71,7 +87,7 @@ class RSSInfo:
         self.rss_company_blog_description = rss_company_blog_description
     
 class RSSBlogSnippet:
-    def __init__(self, title : str, link : str, publication_date :str, description : str, tags : list[str]):
+    def __init__(self, title : str, link : str, publication_date :str | None, description : str | None, tags : list[str]):
         self.title = title
         self.link = link
         self.publication_date = publication_date
@@ -94,8 +110,9 @@ class BlogParser:
     def fetch_blog_html(self):
         try:
             response = requests.get(self.blog_link)
-        except:
-            logging.error(f"Issue in fetching from Blog HTML: Status code - {response.status_code} blog link - {self.blog_link}")
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Issue in fetching from Blog HTML: {e} blog link - {self.blog_link}")
             return None
 
         response.encoding = "utf-8"
@@ -108,7 +125,7 @@ class BlogParser:
 
         essential_content_body = cleaned_blog_html.body
 
-        with open("parsed_response.txt", "w", encoding="utf-8") as file:
+        with open("parsed_response.txt", "a", encoding="utf-8") as file:
             for child in essential_content_body.descendants:
                 if child.name == "p":
                     file.writelines("\n-----THIS IS A PARAGRAPH NORMAL CONTENT-----\n")
@@ -130,22 +147,23 @@ class Driver:
     def __init__(self):
         pass
     def run(self):
-        RSS_FEED_LINKS = {"Finn.no" : "http://tech.finn.no/atom.xml", "Meta" : "https://engineering.fb.com/feed"}
+        RSS_FEED_LINKS = {"Game Changer" : "https://tech.gc.com/atom.xml","Meta" : "https://engineering.fb.com/feed"}
 
         for rss_name in RSS_FEED_LINKS:
             rss_link = RSS_FEED_LINKS[rss_name]
 
             rss_parser = RSSParser(rss_link)
-            rss_response = rss_parser.fetch_feed()
+            rss_parser_object = rss_parser.fetch_feed()
 
-            if rss_response == None:
+            if rss_parser_object == None:
                 continue
 
-            rss_info = rss_parser.parse_rss_info(rss_response) #returns RssInfo object
-            all_rss_blog_info = rss_parser.parse_rss_blog_info(rss_response) #returns a list of blogsnippets
+            rss_info = rss_parser.parse_rss_info(rss_parser_object) #returns RssInfo object
+            all_rss_blog_info = rss_parser.parse_rss_blog_info(rss_parser_object) #returns a list of blogsnippets
 
             for blog_info in all_rss_blog_info:
                 blog_link = blog_info.link
+                blog_title = blog_info.title
                 
                 blog_parser = BlogParser(blog_link)
                 blog_response = blog_parser.fetch_blog_html()
@@ -153,10 +171,7 @@ class Driver:
                 if blog_response == None:
                     continue
 
-                blog_parser.parse_blog_post()
-                break
-
-            break
+                blog_parser.parse_blog_post(blog_response)
         
 driver = Driver()
 driver.run()
