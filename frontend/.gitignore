@@ -20,7 +20,9 @@ expo-env.d.ts
 # @end expo-cli
 
 assets/
-components/
+# components/
 constants/
 hooks/
 scripts/
+
+%*ProgramData*

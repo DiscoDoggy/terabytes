@@ -2,8 +2,6 @@ import { Text, View, StyleSheet, Image } from "react-native";
 
 const BlogFeedSummaryCard = (props) => {
     //expected props are title, author, company if applicable
-    //an array of images, summary content, tags, and a path to read
-    //the whole article
 
     return (
       <>
@@ -27,9 +25,9 @@ const BlogFeedSummaryCard = (props) => {
           />
         </View> 
 
-        <View>
-          <Text>Article Description:</Text>
-          <Text>{props.article_description}</Text>
+        <View style={styles.article_summary_container}>
+          <Text style={{fontWeight:"bold"}}>Summary:</Text>
+          <Text style={styles.article_summary_text}>{props.article_description}</Text>
         </View>
     </>
     );
@@ -57,11 +55,21 @@ const styles = StyleSheet.create({
   authors_company_container: {
     flex: 1,
     flexDirection: 'row',
+    marginLeft: 5
   },
 
   authors_company_text: {
-    fontSize: 25,
-    fontWeight: "medium",
+    fontSize: 12,
+    fontWeight: "light",
+
+  },
+
+  article_summary_container: {
+    marginLeft: 5
+  },
+
+  article_summary_text: {
+    fontSize: 15,
   },
 
   image_container: {

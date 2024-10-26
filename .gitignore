@@ -1,0 +1,8 @@
+terabytes_app
+data_extractors/parsed_response
+data_extractors/parsed_response.txt
+sample_response
+rss_extraction.json
+engineering_feed.xml
+__pycache__
+*sample_response*
