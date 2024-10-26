@@ -6,3 +6,7 @@ rss_extraction.json
 engineering_feed.xml
 __pycache__
 *sample_response*
+engineering_blogs.opml
+non_working_feeds
+non_working_feeds.txt
+parse_blog_opml.py
