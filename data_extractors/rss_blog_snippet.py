@@ -1,9 +1,10 @@
 import xml.etree.ElementTree as ET
 from readability import Document
 from bs4 import BeautifulSoup
+import feedparser
 import requests
 import logging
-from all_rss_feed_links import RSS_FEED_LINKS
+# from all_rss_feed_links import RSS_FEED_LINKS
 
 class RSSParser:
     def __init__(self, rss_feed_link):
@@ -21,34 +22,35 @@ class RSSParser:
     def parse_rss_info(self, rss_xml_response):
         if rss_xml_response == None:
             return
+        
+        parsed_rss = feedparser.parse(rss_xml_response)
+        print(f"RSS VERSION {parsed_rss.version}")
 
-        xml_tree_root = ET.fromstring(rss_xml_response)
-        rss_channel_tag = xml_tree_root.find("channel")
+        rss_name = parsed_rss.feed.title
+        rss_link = parsed_rss.feed.link
 
-        rss_name = rss_channel_tag.find("title").text
-        rss_link = rss_channel_tag.find("link").text
-        rss_description = rss_link = rss_channel_tag.find("description").text
+        if "description" not in parsed_rss["channel"]:
+            rss_description = ""
+        else:
+            rss_description = parsed_rss["channel"]["description"]
 
         rss_info = RSSInfo(rss_name, rss_link, rss_description)
         
         return rss_info
 
     def parse_rss_blog_info(self, rss_xml_response):
-        xml_tree_root = ET.fromstring(rss_xml_response)
-        rss_channel_tag = xml_tree_root.find("channel")
-        all_blog_items = rss_channel_tag.findall("item")
+        
+        parsed_rss = feedparser.parse(rss_xml_response)
+        all_blog_items = parsed_rss.entries
 
         all_blog_info = []
         for blog_item in all_blog_items:
-            blog_title = blog_item.find("title").text
-            blog_link = blog_item.find("link").text
-            blog_publication_date = blog_item.find("pubDate").text
-            blog_description = blog_item.find("description").text
+            blog_title = blog_item.title
+            blog_link = blog_item.link
+            blog_publication_date = blog_item.published
+            blog_description = blog_item.description
             
-            blog_tags = []
-            blog_category_tags = blog_item.findall("category")
-            for tag in blog_category_tags:
-                blog_tags.append(tag.text)
+            blog_tags = list(blog_item.feed.categories)
 
             rss_blog_info = RSSBlogSnippet(
                 title=blog_title,
@@ -128,6 +130,7 @@ class Driver:
     def __init__(self):
         pass
     def run(self):
+        RSS_FEED_LINKS = {"Finn.no" : "http://tech.finn.no/atom.xml", "Meta" : "https://engineering.fb.com/feed"}
 
         for rss_name in RSS_FEED_LINKS:
             rss_link = RSS_FEED_LINKS[rss_name]
