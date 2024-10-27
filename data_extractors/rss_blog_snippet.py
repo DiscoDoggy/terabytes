@@ -52,6 +52,7 @@ class RSSParser:
                 blog_description = blog_title
             else:
                 blog_description = blog_item["description"]
+                print(blog_description)
 
             if "published" in blog_item:
                 blog_publication_date = blog_item["published"]
@@ -124,24 +125,46 @@ class BlogParser:
         cleaned_blog_html = BeautifulSoup(cleaned_blog_html.summary(), "html.parser")
 
         essential_content_body = cleaned_blog_html.body
-
+        all_blog_content = EssentialBlogHTMLContent()
         with open("parsed_response.txt", "a", encoding="utf-8") as file:
             for child in essential_content_body.descendants:
+                tag_to_content = {}
                 if child.name == "p":
                     file.writelines("\n-----THIS IS A PARAGRAPH NORMAL CONTENT-----\n")
                     file.writelines(child.text)
+                    tag_to_content[child.name] = child.text
                 elif child.name == "h2" or child.name == "h3" or child.name == "h4" or child.name == "h5" or child.name == "h6":
                     file.writelines("\n-----This is a header-----\n")
                     file.writelines(child.text)
+                    tag_to_content[child.name] = child.text
+
                 elif child.name == "img":
                     file.writelines("\n-----This is an image------\n")
                     file.writelines(child["src"])
+                    tag_to_content[child.name] = child["src"]
                 elif child.name == "li":
                     file.writelines("\n-------THIS IS A LIST ITEM------\n")
                     file.writelines(child.text)
+                    tag_to_content[child.name] = child.text
 
-# class BlogContent:
-#     def __init__(self, content : str)
+                all_blog_content.add_content(tag_to_content)
+
+        return all_blog_content            
+
+
+class EssentialBlogHTMLContent:
+    def __init__(self):
+        """ (naturally sequential)
+        [
+            {tag : content},
+            {tag : content},
+            {tag : content},
+        ]
+        """
+        self.content = []
+
+    def add_content(self, tag_to_content : dict[str, str]):
+        self.content.append(tag_to_content)
 
 class Driver:
     def __init__(self):
@@ -171,7 +194,7 @@ class Driver:
                 if blog_response == None:
                     continue
 
-                blog_parser.parse_blog_post(blog_response)
+                essential_blog_html_content = blog_parser.parse_blog_post(blog_response) #write this to the databse
         
 driver = Driver()
 driver.run()
