@@ -4,6 +4,11 @@ from bs4 import BeautifulSoup
 import feedparser
 import requests
 import logging
+from database_connection import DatabaseConnection
+from sqlalchemy import text, select, insert
+from database_model import company_feed_info, company_blog_posts, company_blog_post_content
+import uuid
+
 # from all_rss_feed_links import RSS_FEED_LINKS
 
 class RSSParser:
@@ -165,6 +170,36 @@ class EssentialBlogHTMLContent:
 
     def add_content(self, tag_to_content : dict[str, str]):
         self.content.append(tag_to_content)
+        
+class DatabaseWriter:
+    def __init__(self):
+        self.engine = DatabaseConnection()
+    
+    def write_blog_to_db(self, blog_info : RSSBlogSnippet, blog_content : EssentialBlogHTMLContent):
+        pass
+
+    def write_company_to_db(self, feed_info: RSSInfo):
+        with self.engine.connect() as conn:
+            query = (
+                select(company_feed_info.c.blog_name).
+                where(company_feed_info.c == feed_info.rss_company_blog_name)
+            )
+
+            results = conn.execute(query)
+            count = 0
+            for _ in results:
+                count += 1
+            if not count:
+                unique_id = uuid.uuid4()
+                query = (
+                    insert(company_feed_info).
+                    values(
+                        id=unique_id, 
+                        blog_name=feed_info.rss_company_blog_name, 
+                        feed_link=feed_info.rss_company_blog_link,
+                        blog_description=feed_info.rss_company_blog_description
+                    )
+                )
 
 class Driver:
     def __init__(self):
@@ -199,6 +234,9 @@ class Driver:
 driver = Driver()
 driver.run()
 
+# db_engine = DatabaseConnection()
+# with db_engine.connect() as conn:
+#     result = conn.execute(text("SELECT *"))
 
 
 
