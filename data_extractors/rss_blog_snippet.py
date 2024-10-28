@@ -5,8 +5,9 @@ import feedparser
 import requests
 import logging
 from database_connection import DatabaseConnection
-from sqlalchemy import text, select, insert
-from database_model import company_feed_info, company_blog_posts, company_blog_post_content
+from sqlalchemy import text, select
+from sqlalchemy.dialects.postgresql import insert
+from database_model import company_blog_site, company_blog_posts, company_blog_post_content
 import uuid
 
 # from all_rss_feed_links import RSS_FEED_LINKS
@@ -156,7 +157,6 @@ class BlogParser:
 
         return all_blog_content            
 
-
 class EssentialBlogHTMLContent:
     def __init__(self):
         """ (naturally sequential)
@@ -171,35 +171,92 @@ class EssentialBlogHTMLContent:
     def add_content(self, tag_to_content : dict[str, str]):
         self.content.append(tag_to_content)
         
-class DatabaseWriter:
-    def __init__(self):
-        self.engine = DatabaseConnection()
-    
-    def write_blog_to_db(self, blog_info : RSSBlogSnippet, blog_content : EssentialBlogHTMLContent):
-        pass
+    def convert_to_db_company_blog_post_content_format(self, company_blog_post_id):
+        db_format = []
+        for i in range(len(self.content)):
+            new_dict = {}
+            new_dict["company_blog_post_id"] = company_blog_post_id
+            new_dict["tag_type"] = self.content[i]
+            new_dict["tag_content"] = self.content[i][self.content[i]]
+            new_dict["order"] = i
 
-    def write_company_to_db(self, feed_info: RSSInfo):
+            db_format.append(new_dict)
+        return db_format
+    
+class DatabaseBlogWriter:
+    def __init__(self, company_blog_name : str):
+        self.engine = DatabaseConnection()
+        self.company_blog_id = self.get_company_id(company_blog_name)
+
+    def get_company_id(self, company_blog_name : str) -> uuid:
+        query = (
+            select(company_blog_site.c.id).
+            where(company_blog_name == company_blog_site.c.blog_name)
+        )
         with self.engine.connect() as conn:
-            query = (
-                select(company_feed_info.c.blog_name).
-                where(company_feed_info.c == feed_info.rss_company_blog_name)
+            results = conn.execute(query)
+        
+        for result in results:
+            company_id = result.id
+        
+        return company_id
+    
+    def write_blog_snippet_to_db(self, blog_info : RSSBlogSnippet):
+        #check that the blog with this title and this company is not already in the database (title and company is our uniqueness indicator)
+        with self.engine.connect() as conn:            
+            insert_query = (
+                insert(company_blog_posts).
+                values(title=blog_info.title, description=blog_info.description, publication_date=blog_info.publication_date, company_id=self.company_blog_id, link=blog_info.link).
+                on_conflict_do_nothing(index_elements=["company_id", "title"]).
+                returning(company_blog_posts.c.id)
             )
 
+            conn.execute(insert_query)
+            conn.commit()
+
+    def write_blog_content_to_db(self, blog_info : RSSBlogSnippet, blog_content : EssentialBlogHTMLContent):
+        blog_title = blog_info.title
+        blog_post_id = self.get_blog_snippet_id(blog_title)
+        # [{company_blog_post_id : id, tag_type : tag, tag_content : contenet, order : order int}]
+        db_formatted_blog_content = blog_content.convert_to_db_company_blog_post_content_format(blog_post_id)
+        
+        query = insert(company_blog_post_content), 
+        db_formatted_blog_content
+
+        with self.engine.connect() as conn:
+            conn.execute(query)
+            conn.commit()
+
+    def get_blog_snippet_id(self, blog_title : str):
+        query = (
+            select(company_blog_posts.c.id).
+            where(company_blog_posts.c.title == blog_title)
+        )
+
+        with self.engine.connect() as conn:
             results = conn.execute(query)
-            count = 0
-            for _ in results:
-                count += 1
-            if not count:
-                unique_id = uuid.uuid4()
-                query = (
-                    insert(company_feed_info).
-                    values(
-                        id=unique_id, 
-                        blog_name=feed_info.rss_company_blog_name, 
-                        feed_link=feed_info.rss_company_blog_link,
-                        blog_description=feed_info.rss_company_blog_description
-                    )
+        
+        for result in results:
+            blog_id = result.id
+        
+        return blog_id
+            
+    def write_company_to_db(self, feed_info: RSSInfo):
+        with self.engine.connect() as conn:
+            unique_id = uuid.uuid4()
+            query = (
+                insert(company_blog_site)
+                .values(
+                    id=unique_id, 
+                    blog_name=feed_info.rss_company_blog_name, 
+                    feed_link=feed_info.rss_company_blog_link,
+                    blog_description=feed_info.rss_company_blog_description
                 )
+                .on_conflict_do_nothing(index_elements=["blog_name"])
+
+            )
+            conn.execute(query)
+            conn.commit()
 
 class Driver:
     def __init__(self):
@@ -217,11 +274,17 @@ class Driver:
                 continue
 
             rss_info = rss_parser.parse_rss_info(rss_parser_object) #returns RssInfo object
+            curr_rss_company = rss_info.rss_company_blog_name
+
+            db_blog_writer = DatabaseBlogWriter(curr_rss_company)
+            db_blog_writer.write_company_to_db(rss_info)
+
             all_rss_blog_info = rss_parser.parse_rss_blog_info(rss_parser_object) #returns a list of blogsnippets
 
             for blog_info in all_rss_blog_info:
                 blog_link = blog_info.link
                 blog_title = blog_info.title
+                db_blog_writer.write_blog_snippet_to_db(blog_info)
                 
                 blog_parser = BlogParser(blog_link)
                 blog_response = blog_parser.fetch_blog_html()
@@ -229,7 +292,9 @@ class Driver:
                 if blog_response == None:
                     continue
 
-                essential_blog_html_content = blog_parser.parse_blog_post(blog_response) #write this to the databse
+                essential_blog_html_content = blog_parser.parse_blog_post(blog_response) #write this to the database
+                db_blog_writer.write_blog_content_to_db(essential_blog_html_content)
+
         
 driver = Driver()
 driver.run()
