@@ -58,7 +58,6 @@ class RSSParser:
                 blog_description = blog_title
             else:
                 blog_description = blog_item["description"]
-                print(blog_description)
 
             if "published" in blog_item:
                 blog_publication_date = blog_item["published"]
@@ -173,12 +172,21 @@ class EssentialBlogHTMLContent:
         
     def convert_to_db_company_blog_post_content_format(self, company_blog_post_id):
         db_format = []
+        count = 0
         for i in range(len(self.content)):
+            if not self.content[i]:
+                continue
+
             new_dict = {}
+
+            tag, tag_content = list(self.content[i].items())[0]
+
             new_dict["company_blog_post_id"] = company_blog_post_id
-            new_dict["tag_type"] = self.content[i]
-            new_dict["tag_content"] = self.content[i][self.content[i]]
-            new_dict["order"] = i
+            new_dict["tag_type"] = tag
+            new_dict["tag_content"] = tag_content
+            new_dict["order"] = count
+
+            count += 1
 
             db_format.append(new_dict)
         return db_format
@@ -186,7 +194,7 @@ class EssentialBlogHTMLContent:
 class DatabaseBlogWriter:
     def __init__(self, company_blog_name : str):
         self.engine = DatabaseConnection()
-        self.company_blog_id = self.get_company_id(company_blog_name)
+        self.company_blog_name = company_blog_name
 
     def get_company_id(self, company_blog_name : str) -> uuid:
         query = (
@@ -196,6 +204,7 @@ class DatabaseBlogWriter:
         with self.engine.connect() as conn:
             results = conn.execute(query)
         
+        company_id = None
         for result in results:
             company_id = result.id
         
@@ -206,7 +215,7 @@ class DatabaseBlogWriter:
         with self.engine.connect() as conn:            
             insert_query = (
                 insert(company_blog_posts).
-                values(title=blog_info.title, description=blog_info.description, publication_date=blog_info.publication_date, company_id=self.company_blog_id, link=blog_info.link).
+                values(title=blog_info.title, description=blog_info.description, publication_date=blog_info.publication_date, company_id=self.get_company_id(self.company_blog_name), link=blog_info.link).
                 on_conflict_do_nothing(index_elements=["company_id", "title"]).
                 returning(company_blog_posts.c.id)
             )
@@ -219,12 +228,11 @@ class DatabaseBlogWriter:
         blog_post_id = self.get_blog_snippet_id(blog_title)
         # [{company_blog_post_id : id, tag_type : tag, tag_content : contenet, order : order int}]
         db_formatted_blog_content = blog_content.convert_to_db_company_blog_post_content_format(blog_post_id)
+        print(db_formatted_blog_content[0])
         
-        query = insert(company_blog_post_content), 
-        db_formatted_blog_content
-
         with self.engine.connect() as conn:
-            conn.execute(query)
+            conn.execute(insert(company_blog_post_content), 
+        db_formatted_blog_content)
             conn.commit()
 
     def get_blog_snippet_id(self, blog_title : str):
@@ -257,6 +265,41 @@ class DatabaseBlogWriter:
             )
             conn.execute(query)
             conn.commit()
+        
+    def check_if_content_exists(self, title : str):
+        with self.engine.connect() as conn:
+            query = (
+                select(company_blog_posts.c.id).select_from(company_blog_posts)
+                .join(company_blog_site)
+                .where(company_blog_posts.c.title == title)
+                .where(company_blog_posts.c.company_id == self.company_blog_site.c.id)
+            )
+            
+            results = conn.execute(query)
+            for result in results:
+                blog_id = result.id
+            
+            query = (
+                select(company_blog_post_content.c.company_blog_post_id)
+                .where(company_blog_post_content.company_blog_post_id == blog_id)
+            )
+
+            results = conn.execute(query)
+        count = 0
+        for result in results:
+            count += 1
+            if count > 0:
+                break
+        if count > 0:
+            return True
+        return False
+
+        # query = (
+        #     select(company_blog_posts.c.id).select_from(company_blog_posts).
+        #     join(company_blog_site, company_blog_site.c.id == company_blog_posts.c.company_id)
+        #     .join(company_blog_post_content, company_blog_posts.c.id == company_blog_post_content.c.company_blog_post_id)
+        #     .where(company)
+        # )
 
 class Driver:
     def __init__(self):
@@ -287,13 +330,20 @@ class Driver:
                 db_blog_writer.write_blog_snippet_to_db(blog_info)
                 
                 blog_parser = BlogParser(blog_link)
+
+                #need to figure out a way to check if a blog's content already exists within the DB to prevent unnecessary fetches
+                #if the blog id is already in the content table then we do not need to fetch (how to check if the content has been updated?)
+                if db_blog_writer.check_if_content_exists(blog_info.title):
+                    logging.info(f"{blog_info.title} already exists... continuing")
+                    continue
+
                 blog_response = blog_parser.fetch_blog_html()
                 
                 if blog_response == None:
                     continue
 
                 essential_blog_html_content = blog_parser.parse_blog_post(blog_response) #write this to the database
-                db_blog_writer.write_blog_content_to_db(essential_blog_html_content)
+                db_blog_writer.write_blog_content_to_db(blog_info, essential_blog_html_content)
 
         
 driver = Driver()
