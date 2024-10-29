@@ -9,7 +9,7 @@ from sqlalchemy import text, select
 from sqlalchemy.dialects.postgresql import insert
 from database_model import company_blog_site, company_blog_posts, company_blog_post_content
 import uuid
-
+from all_rss_links_complete import all_rss_links_complete as RSS_FEED_LINKS
 # from all_rss_feed_links import RSS_FEED_LINKS
 
 class RSSParser:
@@ -33,7 +33,7 @@ class RSSParser:
         
         rss_name = parsed_rss["channel"]["title"]
         rss_link = parsed_rss["channel"]["link"]
-        
+
         if "description" not in parsed_rss["channel"]:
             logging.debug(f"{self.rss_feed_link} does not have feed description")
             rss_description = rss_name
@@ -144,6 +144,8 @@ class BlogParser:
                     tag_to_content[child.name] = child.text
 
                 elif child.name == "img":
+                    if "src" not in child:
+                        continue
                     file.writelines("\n-----This is an image------\n")
                     file.writelines(child["src"])
                     tag_to_content[child.name] = child["src"]
@@ -173,6 +175,10 @@ class EssentialBlogHTMLContent:
     def convert_to_db_company_blog_post_content_format(self, company_blog_post_id):
         db_format = []
         count = 0
+
+        if not self.content:
+            return None
+
         for i in range(len(self.content)):
             if not self.content[i]:
                 continue
@@ -228,7 +234,10 @@ class DatabaseBlogWriter:
         blog_post_id = self.get_blog_snippet_id(blog_title)
         # [{company_blog_post_id : id, tag_type : tag, tag_content : contenet, order : order int}]
         db_formatted_blog_content = blog_content.convert_to_db_company_blog_post_content_format(blog_post_id)
-        print(db_formatted_blog_content[0])
+        # print(db_formatted_blog_content[0])
+
+        if not db_formatted_blog_content:
+            return None
         
         with self.engine.connect() as conn:
             conn.execute(insert(company_blog_post_content), 
@@ -272,7 +281,7 @@ class DatabaseBlogWriter:
                 select(company_blog_posts.c.id).select_from(company_blog_posts)
                 .join(company_blog_site)
                 .where(company_blog_posts.c.title == title)
-                .where(company_blog_posts.c.company_id == self.company_blog_site.c.id)
+                .where(company_blog_posts.c.company_id == company_blog_site.c.id)
             )
             
             results = conn.execute(query)
@@ -281,7 +290,7 @@ class DatabaseBlogWriter:
             
             query = (
                 select(company_blog_post_content.c.company_blog_post_id)
-                .where(company_blog_post_content.company_blog_post_id == blog_id)
+                .where(company_blog_post_content.c.company_blog_post_id == blog_id)
             )
 
             results = conn.execute(query)
@@ -305,7 +314,7 @@ class Driver:
     def __init__(self):
         pass
     def run(self):
-        RSS_FEED_LINKS = {"Game Changer" : "https://tech.gc.com/atom.xml","Meta" : "https://engineering.fb.com/feed"}
+        # RSS_FEED_LINKS = {"Game Changer" : "https://tech.gc.com/atom.xml","Meta" : "https://engineering.fb.com/feed"}
 
         for rss_name in RSS_FEED_LINKS:
             rss_link = RSS_FEED_LINKS[rss_name]
@@ -317,7 +326,11 @@ class Driver:
                 continue
 
             rss_info = rss_parser.parse_rss_info(rss_parser_object) #returns RssInfo object
+            if rss_info.rss_company_blog_name == "":
+                rss_info.rss_company_blog_name = rss_name
+
             curr_rss_company = rss_info.rss_company_blog_name
+
 
             db_blog_writer = DatabaseBlogWriter(curr_rss_company)
             db_blog_writer.write_company_to_db(rss_info)
