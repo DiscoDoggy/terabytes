@@ -1,13 +1,13 @@
-from fastapi import Depends, APIRouter, HTTPException, Response
+from fastapi import Depends, APIRouter, HTTPException, Response, Request
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
-from model import SignupRequest, LoginRequest
-from database_connection import DatabaseConnection
+from .model import SignupRequest, LoginRequest
+from ..database_connection import DatabaseConnection
 from sqlalchemy import insert, select, delete
 from sqlalchemy.exc import IntegrityError
-from database_model import accounts, sessions
+from ..database_model import accounts, sessions
 import uuid
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter(
     prefix="/accounts"
@@ -59,6 +59,8 @@ def check_session_exists(account_id : uuid, db_engine):
         return True
     return False
 
+# def authenticate_user()
+
 @router.post("/login")
 def login(response : Response, credentials:HTTPBasicCredentials=Depends(security)):
     query = (
@@ -69,6 +71,9 @@ def login(response : Response, credentials:HTTPBasicCredentials=Depends(security
         )
         .where(accounts.c.username == credentials.username)
     )
+
+    print(f'username:{credentials.username}')
+    print(f'password: {credentials.password}')
 
     with db_engine.connect() as conn:
         results = conn.execute(query)
@@ -99,7 +104,7 @@ def login(response : Response, credentials:HTTPBasicCredentials=Depends(security
         conn.commit()
 
         session_id = uuid.uuid4()
-        start_date_time = datetime.now(datetime.timezone.utc)
+        start_date_time = datetime.now(timezone.utc)
         end_date_time = start_date_time + timedelta(days=30)
 
         query = (
@@ -108,16 +113,44 @@ def login(response : Response, credentials:HTTPBasicCredentials=Depends(security
         )
 
         conn.execute(query)
-        conn.commit(query)
+        conn.commit()
 
-    response.set_cookie("session_id" : session_id)
+    response.set_cookie(key="session_id", value=session_id)
     return {"session_id" : session_id}
 
-    
+@router.get("/logout")
+def logout(request : Request):
+    session_token = request.cookies.get("session_id")
+    print(f"session_token:{session_token}")
+    query = (
+        delete(sessions)
+        .where(sessions.c.id == session_token)
+    )
+
+    with db_engine.connect() as conn:
+        conn.execute(query)
+        conn.commit()
+        
+    return {"message" : "Logout successful"}
 
 
 
 
 
-    
+"""
+#APIS
+Accounts
+* POST Sign up
+* POST Login
+
+Blog Posts
+* Get posts by accounts user follows
+* Get posts by tag
+* Get posts randomly
+* POST create blog post (pending feature)
+
+Followers
+* Get followers by accountId
+* Get accounts user is following by accountId
+"""
 
