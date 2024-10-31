@@ -1,11 +1,12 @@
 from ..dependencies.auth import authorize_user
 from ..database_connection import DatabaseConnection
-from ..database_model import accounts, company_blog_posts, company_blog_site, company_blog_post_content, followings
+from ..database_model import accounts, company_blog_site, followings
 from .model import AccountFollowingsResponse 
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select, insert
 import uuid
+from uuid import UUID 
 
 router = APIRouter(
     prefix="/followings"
@@ -13,14 +14,18 @@ router = APIRouter(
 
 db_engine = DatabaseConnection()
 
+@router.get("/")
+def test():
+    return {"message" : "this is the followings endpoint"}
+
 @router.post("/follow_company_blog/{company_blog_id}")
-def follow_company_blog(company_blog_id : uuid, account_info = Depends(authorize_user)):
+def follow_company_blog(company_blog_id : UUID, account_info = Depends(authorize_user)):
     account_id = account_info["account_id"]
     new_follow_id = uuid.uuid4()
 
     query = (
         insert(followings)
-        .values(id=new_follow_id, account_id=account_id, following_type="scraped", following_id={company_blog_id})
+        .values(id=new_follow_id, account_id=account_id, following_type="scraped", following_id=company_blog_id)
     )
 
     with db_engine.connect() as conn:
@@ -30,7 +35,7 @@ def follow_company_blog(company_blog_id : uuid, account_info = Depends(authorize
     return {"message" : "follow successful"}
 
 @router.get("/following/{account_id}")
-def get_who_account_follows(account_id : uuid) -> list[AccountFollowingsResponse]:
+def get_who_account_follows(account_id : UUID) -> list[AccountFollowingsResponse]:
     query = (
         select(followings.c.following_id, company_blog_site.c.blog_name, accounts.c.username, followings.c.following_type)
         .select_from(followings)
@@ -62,7 +67,7 @@ def get_who_account_follows(account_id : uuid) -> list[AccountFollowingsResponse
     return following
 
 @router.get("/followers/{account_id}")
-def get_account_followers(account_id : uuid) -> list[AccountFollowingsResponse]:
+def get_account_followers(account_id : UUID) -> list[AccountFollowingsResponse]:
     query = (
         select(followings.account_id, accounts.c.username, followings.c.following_type)
         .select_from(followings)

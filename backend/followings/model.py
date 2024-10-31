@@ -1,7 +1,7 @@
 from pydantic import BaseModel
-import uuid
+from uuid import UUID
 
 class AccountFollowingsResponse(BaseModel):
-    account_id : uuid
+    account_id : UUID
     username : str
     following_type : str

@@ -4,7 +4,7 @@ from ..database_model import accounts, company_blog_posts, company_blog_site, co
 from .model import BlogSnippetResponse
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 router = APIRouter(
     prefix="/posts"
@@ -36,10 +36,21 @@ def get_following_posts(account_info : dict = Depends(authorize_user)) -> list[B
     return post_snippets
 
 @router.get("/random_posts")
-def get_random_posts():
-    pass
+def get_random_posts() -> list[BlogSnippetResponse]:
+    query = (
+        select(company_blog_posts.c.id, company_blog_posts.c.title, company_blog_posts.c.description)
+        .order_by(func.random())
+        .limit(100)
+    )
 
-@router.get("/random_posts_by_tag")
+    with db_engine.connect() as conn:
+        results = conn.execute(query)
+    random_blog_posts = []
+    for result in results:
+        random_blog_posts.append(result)
+    return random_blog_posts
+
+@router.get("/random_posts_by_tag/{tag_id}")
 def get_random_posts_by_tag():
     pass
 

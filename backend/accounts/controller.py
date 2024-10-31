@@ -6,6 +6,7 @@ from sqlalchemy import insert, select, delete
 from sqlalchemy.exc import IntegrityError
 from ..database_model import accounts, sessions
 import uuid
+from uuid import UUID
 import bcrypt
 from datetime import datetime, timedelta, timezone
 
@@ -46,7 +47,7 @@ def signup(signup_info : SignupRequest):
 # def authenticate_user(credentials : HTTPBasicCredentials = Depends(security)):
 #     user = users
 
-def check_session_exists(account_id : uuid, db_engine):
+def check_session_exists(account_id : UUID, db_engine):
     query = (
         select(sessions.c.id, sessions.c.account_id)
         .where(sessions.c.account_id == account_id)

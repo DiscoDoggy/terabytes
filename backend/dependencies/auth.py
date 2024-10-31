@@ -2,8 +2,9 @@ from ..database_connection import DatabaseConnection
 from ..database_model import *
 from fastapi import Request, HTTPException
 from datetime import datetime, timezone
-from database_model import sessions, accounts
+from ..database_model import sessions, accounts
 from sqlalchemy import select
+from uuid import UUID
 
 def authorize_user(request : Request):
 
@@ -18,7 +19,7 @@ def authorize_user(request : Request):
     query = ( #i think this is an information leak
         select(accounts.c.id, sessions.c.end_date_time)
         .select_from(sessions)
-        .join(accounts)
+        .join(accounts, accounts.c.id == sessions.c.account_id)
         .where(session_token == sessions.c.id)
     )
 
@@ -33,6 +34,6 @@ def authorize_user(request : Request):
     
     if session_end_time <= curr_time:
         raise HTTPException(status_code=401, detail="Session expired. Please login again")
-
+    print(f"TYPE OF ACCOUNT ID: {type(account_id)}")
     return {"account_id" : account_id}
 

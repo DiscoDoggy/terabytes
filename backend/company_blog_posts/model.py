@@ -1,7 +1,7 @@
 from pydantic import BaseModel
-import uuid
+from uuid import UUID
 
 class BlogSnippetResponse(BaseModel):
-    id : uuid
+    id : int
     title : str
     description : str | None
