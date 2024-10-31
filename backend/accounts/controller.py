@@ -143,15 +143,19 @@ Accounts
     !DONE
 * GET logout
     !DONE
+* UPDATE/PUT account
 
 Blog Posts
 * Get posts by accounts user follows the feed page
+    ? Needs testing
 * Get posts by tag
+    ? Tag extraction not implemented yet
 * Get posts randomly
 * POST create blog post (pending feature)
 
 Followers
 * Get followers by accountId
 * Get accounts user is following by accountId
+* DELETE unfollow a blog or account
 """
 
