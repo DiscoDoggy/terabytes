@@ -4,9 +4,10 @@ from fastapi import Request, HTTPException
 from datetime import datetime, timezone
 from database_model import sessions, accounts
 from sqlalchemy import select
-db_engine = DatabaseConnection()
 
 def authorize_user(request : Request):
+
+    db_engine = DatabaseConnection()
     session_token = request.cookies.get("session_id")
 
     if not session_token:

@@ -72,9 +72,6 @@ def login(response : Response, credentials:HTTPBasicCredentials=Depends(security
         .where(accounts.c.username == credentials.username)
     )
 
-    print(f'username:{credentials.username}')
-    print(f'password: {credentials.password}')
-
     with db_engine.connect() as conn:
         results = conn.execute(query)
     
@@ -140,11 +137,15 @@ def logout(request : Request):
 """
 #APIS
 Accounts
-* POST Sign up
-* POST Login
+* POST Sign up 
+    !DONE
+* POST Login 
+    !DONE
+* GET logout
+    !DONE
 
 Blog Posts
-* Get posts by accounts user follows
+* Get posts by accounts user follows the feed page
 * Get posts by tag
 * Get posts randomly
 * POST create blog post (pending feature)
