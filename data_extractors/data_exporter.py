@@ -19,11 +19,11 @@ class RSSFeedExporter(DataExporter):
         self.rss_feed_info = rss_feed_info
     
     def export(self):
-        new_id = uuid.uuid4()
+        # new_id = uuid.uuid4()
         insert_query = (
             insert(company_blog_site)
             .values(
-                id=new_id, 
+                # id=new_id, 
                 blog_name=self.rss_feed_info.rss_company_blog_name,
                 feed_link=self.rss_feed_info.rss_company_blog_link,
                 blog_description=self.rss_feed_info.rss_company_blog_description
@@ -65,44 +65,39 @@ class RSSBlogExporter(DataExporter):
                         link=blog.link,
                         content=blog.content
                     )
-                    .returning(index_elements=["id"])
+                    .returning(company_blog_posts.c.id)
                 )
 
                 blog_id = conn.execute(insert_query).first().id
                 conn.commit()
 
                 for tag in blog.tags:
-                    self.insert_tag_db(blog_id, tag)
+                    self.insert_tag_db(blog_id, tag, conn)
 
-
-    def insert_tag_db(self, post_id, tag : str, db_conn):
+    #TODO: ON CONFLICT THIS FUCKIN FUNCTION
+    def insert_tag_db(self, post_id, tag : str, db_conn): 
         cleaned_tag = tag.strip().capitalize()
 
         query = (
+            insert(all_db_tags)
+            .values(name=cleaned_tag)
+            .on_conflict_do_nothing(index_elements=["name"])
+        )
+
+        db_conn.execute(query)
+        db_conn.commit()
+        
+        query = (
             select(all_db_tags.c.id)
-            .where(cleaned_tag == all_db_tags.c.name)
+            .where(all_db_tags.c.name == cleaned_tag)
         )
 
         result = db_conn.execute(query).first()
 
-        tag_id = -1
-        if result is None:
-            query = (
-                insert(all_db_tags)
-                .values(name=tag)
-                .returning(index_elements=["id"])
-            )
-
-            tag_result = db_conn.execute(query).first()
-            tag_id = tag_result.id
-            db_conn.commit()
-        else:
-            tag_id = result.id
-        
-        insert_query = (
+        query = (
             insert(blog_tags)
-            .values(blog_post_id=post_id, tag_id=tag_id)
+            .values(blog_post_id=post_id, tag_id=result.id)
         )
 
-        db_conn.execute(insert_query)
+        db_conn.execute(query)
         db_conn.commit()
