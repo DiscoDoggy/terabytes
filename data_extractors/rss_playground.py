@@ -1,7 +1,7 @@
 import feedparser
 import requests
 from all_rss_links_complete import all_rss_links_complete as RSS_FEED_LINKS
-from readability import Document
+from readability import Document, browser
 
 # link = "https://github.blog/engineering.atom"
 # link = "http://tech.finn.no/atom.xml"
@@ -56,4 +56,8 @@ from readability import Document
 
 # test_for_broken_resources()
 
+response = requests.get("https://8thlight.com/insights/enterprise-legal-tech-revenue-growth")
+readability_parsing = Document(response.text)
+print(readability_parsing.summary())
 
+# browser.open_in_browser)

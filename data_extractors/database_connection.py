@@ -21,6 +21,6 @@ class DatabaseConnection:
         db_name = secrets["DB_NAME"]
         db_password = secrets["DB_PASSWORD"]
 
-        engine = create_engine(f"postgresql+psycopg2://{db_username}:{db_password}@{db_url}:{db_port}/{db_name}", echo=True)
+        engine = create_engine(f"postgresql+psycopg2://{db_username}:{db_password}@{db_url}:{db_port}/{db_name}", echo=False, future=True)
 
         return engine

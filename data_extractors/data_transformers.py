@@ -6,6 +6,7 @@ from database_connection import DatabaseConnection
 from database_model import company_blog_site, company_blog_posts
 from sqlalchemy import select
 from readability import Document
+
 db_engine = DatabaseConnection()
 
 class DataTransformer(ABC):
@@ -36,18 +37,23 @@ class RSSBlogDeduplicationTransformer(DataTransformer):
         return blogs_not_in_db
     
 class BlogHTMLParseTransformer(DataTransformer):
-    def __init__(self, blog_snippets : RSSBlogSnippet):
+    def __init__(self, blog_snippets : list[RSSBlogSnippet]):
         self.blog_snippets=blog_snippets
     
     def transform(self):
         new_blog_snippets = []
         for blog_snippet in self.blog_snippets:
-            new_blog_snippets.append(self.transform_helper(blog_snippet))
+            new_blog_snippet = self.transform_helper(blog_snippet)
+            new_blog_snippets.append(new_blog_snippet)
 
         return new_blog_snippets
      
     def transform_helper(self, blog_snippet : RSSBlogSnippet):
-        readability_processed_html = Document(blog_snippet.content)
+        blog_snippet.print_blog_info()
+        readability_processed_html = Document(blog_snippet.content.text)
+        readability_processed_html = readability_processed_html.summary()
         
-        blog_snippet.content = readability_processed_html
-        return blog_snippet
+        new_blog_snippet = blog_snippet
+        new_blog_snippet.content = readability_processed_html
+
+        return new_blog_snippet

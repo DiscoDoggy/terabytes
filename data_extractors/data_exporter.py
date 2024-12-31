@@ -40,18 +40,21 @@ class RSSBlogExporter(DataExporter):
         self.rss_blog_snippets = rss_blog_snippets
     
     def export(self):
+        errors = []
+        num_imported = 0
         with db_engine.connect() as conn:
 
             def get_company_id(feed_name : str):
                 result = conn.execute(
                     select(company_blog_site.c.id)
                     .where(company_blog_site.c.blog_name == feed_name)
-                ).first()
+                ).first()      
                 
-                if result is None:
-                    raise ValueError("Get company ID should not yield a \'None\' value")
-                
-                company_id = result.id
+                try:
+                    company_id = result.id
+                except Exception as e:
+                    errors.append(f"{str(e)}")
+
                 return company_id
             
             for blog in self.rss_blog_snippets:
@@ -68,16 +71,22 @@ class RSSBlogExporter(DataExporter):
                     .returning(company_blog_posts.c.id)
                 )
 
-                blog_id = conn.execute(insert_query).first().id
-                conn.commit()
+                try:
+                    blog_id = conn.execute(insert_query).first().id
+                
+                    for tag in blog.tags:
+                        self.insert_tag_db(blog_id, tag, conn)
+                except Exception as e:
+                    errors.append(f"{str(e)}")
+                    continue
+                else:
+                    num_imported += 1
+            conn.commit()
+            return num_imported, errors
 
-                for tag in blog.tags:
-                    self.insert_tag_db(blog_id, tag, conn)
-
-    #TODO: ON CONFLICT THIS FUCKIN FUNCTION
     def insert_tag_db(self, post_id, tag : str, db_conn): 
         cleaned_tag = tag.strip().capitalize()
-
+    
         query = (
             insert(all_db_tags)
             .values(name=cleaned_tag)
@@ -100,4 +109,3 @@ class RSSBlogExporter(DataExporter):
         )
 
         db_conn.execute(query)
-        db_conn.commit()
