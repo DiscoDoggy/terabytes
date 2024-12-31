@@ -25,7 +25,8 @@ class RSSFeedExporter(DataExporter):
             .values(
                 # id=new_id, 
                 blog_name=self.rss_feed_info.rss_company_blog_name,
-                feed_link=self.rss_feed_info.rss_company_blog_link,
+                feed_link=self.rss_feed_info.rss_feed_link,
+                blog_link=self.rss_feed_info.rss_company_blog_link,
                 blog_description=self.rss_feed_info.rss_company_blog_description
             )
             .on_conflict_do_nothing(index_elements=["blog_name"])

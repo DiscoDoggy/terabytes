@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from pipeline import Pipeline, RSSBlogPipeline
+from pipeline import RSSBlogPipeline
 from datetime import datetime, timezone
 from database_connection import DatabaseConnection
 from database_model import company_blog_site, extraction_job
@@ -43,7 +43,7 @@ class PipelineExtractionJob(ABC):
         )
 
         with self.db_engine.connect() as conn:
-            company_id = conn.execute(company_id_query).first()
+            company_id = conn.execute(company_id_query).first().id
             job_insert_query = (
                 insert(extraction_job)
                 .values(company_id=company_id)
@@ -51,6 +51,7 @@ class PipelineExtractionJob(ABC):
             )
 
             job_id = conn.execute(job_insert_query).first().id
+            conn.commit()
             return job_id
 
     def write_metrics_db(self, metrics : MetricsCollector, start, end):
@@ -70,6 +71,10 @@ class PipelineExtractionJob(ABC):
             conn.execute(update_job_query)
             conn.commit()
         
+link = "https://8thlight.com/insights/feed/rss.xml"
+blog_pipeline = RSSBlogPipeline(link)
+job = PipelineExtractionJob(blog_pipeline)
+job.run_job()
 
     
 

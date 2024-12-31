@@ -56,6 +56,7 @@ class RSSFeedPipeline(Pipeline):
 
         rss_info_loader = RSSInfoLoader(parsed_rss)
         rss_info = rss_info_loader.load()
+        rss_info.rss_feed_link = self.rss_feed_link
 
         rss_info_exporter = RSSFeedExporter(rss_info)
         rss_info_exporter.export()
@@ -64,9 +65,6 @@ class RSSFeedPipeline(Pipeline):
 #     feed_pipeline = RSSFeedPipeline(RSS_LINKS[link])
 #     feed_pipeline.run()
 
-link = "https://8thlight.com/insights/feed/rss.xml"
-blog_pipeline = RSSBlogPipeline(link)
 
-blog_pipeline.run()
 
         
