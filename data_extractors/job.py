@@ -6,6 +6,8 @@ from database_model import company_blog_site, extraction_job
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from metrics_collector import MetricsCollector
+from all_rss_links_complete import all_rss_links_complete as RSS_LINKS
+import queue
 
 class Job(ABC):
     @abstractmethod
@@ -41,7 +43,7 @@ class PipelineExtractionJob(ABC):
             select(company_blog_site.c.id)
             .where(company_blog_site.c.feed_link == self.pipeline.rss_feed_link)
         )
-
+        print(self.pipeline.rss_feed_link)
         with self.db_engine.connect() as conn:
             company_id = conn.execute(company_id_query).first().id
             job_insert_query = (
@@ -71,10 +73,31 @@ class PipelineExtractionJob(ABC):
             conn.execute(update_job_query)
             conn.commit()
         
-link = "https://8thlight.com/insights/feed/rss.xml"
-blog_pipeline = RSSBlogPipeline(link)
-job = PipelineExtractionJob(blog_pipeline)
-job.run_job()
+# link = "https://8thlight.com/insights/feed/rss.xml"
+# blog_pipeline = RSSBlogPipeline(link)
+# job = PipelineExtractionJob(blog_pipeline)
+# job.run_job()
 
-    
+job_queue = queue.Queue()
+for link in RSS_LINKS:
+    try:
+        blog_pipeline = RSSBlogPipeline(RSS_LINKS[link])
+        rss_blog_job = PipelineExtractionJob(blog_pipeline)
+    except Exception as e:
+        with open("blog_extraction_issues.txt", "a") as file:
+            file.write("-----ISSUE-----")
+            file.write(str(e))
+            file.write("-----END ISSUE-----")
+
+    job_queue.put(rss_blog_job)
+
+while not job_queue.empty():
+    curr_job = job_queue.get()
+    try:
+        curr_job.run_job()
+    except Exception as e:
+        with open("blog_extraction_issues.txt", "a") as file:
+            file.write("-----ISSUE-----")
+            file.write(str(e))
+            file.write("-----END ISSUE-----")
 

@@ -62,8 +62,15 @@ class RSSFeedPipeline(Pipeline):
         rss_info_exporter.export()
 
 # for link in RSS_LINKS:
+#     print(link)
 #     feed_pipeline = RSSFeedPipeline(RSS_LINKS[link])
-#     feed_pipeline.run()
+#     try:
+#         feed_pipeline.run()
+#     except:
+#         print(f"FAILURE FOR: {link}")
+#         with open("broken_links.txt", "w") as file:
+#             file.write(f"FAILURE: {link} -- {RSS_LINKS[link]}")
+#         continue
 
 
 
