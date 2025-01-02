@@ -13,3 +13,9 @@ parse_blog_opml.py
 secrets.env
 terabytes_eer.htm
 terabytes_eer_files
+test.html
+.ssh_tunnel
+[test]/
+default_repo
+mage_data/
+metadata.yaml

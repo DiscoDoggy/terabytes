@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import { Text, View, StyleSheet, SafeAreaView, FlatList } from "react-native";
 import BlogFeedSummaryCard from "@/components/BlogFeedSummaryCard";
 
@@ -41,14 +42,40 @@ export default function HomeScreen() {
     }
 
   ]
+
+  const [post_data, set_data] = useState([]);
+
+  const get_followed_blog_posts = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/posts/following", {
+        headers: {
+          "Content-Type" : "application/json",
+          "Cookie" : "session_id=aba46209-e1e7-49d7-9ff2-e732d7bd0dad"
+
+        }
+      })
+      if(!response.ok) {
+        throw new Error(`Response Status: ${response.status}`);
+      }
+      
+      const json = await response.json();
+      set_data(json)
+      console.log(json);
+    } catch (error) {
+      console.error(error.message);
+    }
+  };
+
+  useEffect(() => {
+    get_followed_blog_posts();
+  }, []);
   
   return (
     <SafeAreaView styles={styles.container}>
       <FlatList
-        data={POSTS_DATA}
+        data={post_data}
         renderItem= {({item}) => <BlogFeedSummaryCard  
           title={item.title}
-          authors={item.authors}
           company={item.company}
           image_src={item.image_src}
           article_description={item.article_description}
