@@ -7,18 +7,20 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/DiscoDoggy/terabytes/go_backend/internal/env"
 )
 
 //where PAI lives
 
 //config and parameters injected into application
 type application struct {
-	config config
+	config env.ServerConfig
 }
 
-type config struct {
-	addr string
-}
+// type config struct {
+// 	addr string
+// }
 
 func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
@@ -43,14 +45,14 @@ func (app *application) mount() http.Handler {
 func (app *application) run(mux http.Handler) error {
 
 	server := http.Server{
-		Addr: app.config.addr,
+		Addr: ":8000",
 		Handler: mux,
 		WriteTimeout: time.Second * 30,
 		ReadTimeout: time.Second * 10,
 		IdleTimeout: time.Minute,
 	}
 
-	log.Printf("Server has started at %s", app.config.addr)
+	log.Printf("Server has started at %s", server.Addr)
 
 	return server.ListenAndServe()
 }

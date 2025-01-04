@@ -1,11 +1,14 @@
 package main
 
-import "log"
+import(
+	"log"
+	"github.com/DiscoDoggy/terabytes/go_backend/internal/env"
+)
 
 func main() {
-	cfg := config {
-		addr: ":8000",
-	}
+
+	var cfg = env.InitConfig()
+	
 	app := &application {
 		config: cfg,
 	}
