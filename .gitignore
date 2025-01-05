@@ -15,7 +15,13 @@ terabytes_eer.htm
 terabytes_eer_files
 test.html
 .ssh_tunnel
-[test]/
+C:\Users\disco\Computer Programming\terabytes\[test]
 default_repo
 mage_data/
 metadata.yaml
+data_extractors/blog_extraction_issues.txt
+
+go_backend/.air.toml
+go_backend/bin/
+data_extractors/broken_links.txt
+
