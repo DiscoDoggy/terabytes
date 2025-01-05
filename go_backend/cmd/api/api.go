@@ -8,19 +8,29 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/DiscoDoggy/terabytes/go_backend/internal/env"
+	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
 )
 
 //where PAI lives
 
 //config and parameters injected into application
 type application struct {
-	config env.ServerConfig
+	config 	config
+	store 	store.Storage
 }
 
-// type config struct {
-// 	addr string
-// }
+type config struct {
+	serverAddr 	string
+	db			dbConfig
+
+}
+
+type dbConfig struct {
+	addr 			string
+	maxOpenConns	int
+	maxIdleConns 	int
+	maxIdleTime 	string
+}
 
 func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
