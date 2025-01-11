@@ -1,13 +1,16 @@
 package store
 
 import (
-	"database/sql"
 	"context"
+	"database/sql"
+	"time"
 )
+
+var QueryTimeoutDuration = time.Second * 5
 
 type Storage struct {
 	Posts interface {
-		Create(context.Context) error
+		Create(context.Context, *BlogPost) error
 	}
 
 	Users interface {
@@ -17,7 +20,7 @@ type Storage struct {
 
 func NewStorage(db *sql.DB) Storage {
 	return Storage {
-		Posts: &PostsStore{db},
+		Posts: &BlogPostStore{db},
 		Users: &UsersStore {db},
 
 	}
