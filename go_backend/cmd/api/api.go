@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	// "github.com/DiscoDoggy/terabytes/go_backend/internal/env"
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
 )
 
@@ -22,6 +23,7 @@ type application struct {
 type config struct {
 	serverAddr 	string
 	db			dbConfig
+	env			string
 
 }
 
@@ -47,6 +49,9 @@ func (app *application) mount() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
+		r.Route("/blogs", func(r chi.Router) {
+			r.Post("/", app.createBlogHandler)
+		})
 	}) 
 
 	return r
