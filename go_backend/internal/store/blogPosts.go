@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"github.com/DiscoDoggy/terabytes/go_backend/internal/misc"
 )
 
 type BlogPostContent struct {
@@ -44,6 +45,12 @@ func (s *BlogPostStore) Create(ctx context.Context, blogPost * BlogPost) error {
 
 	getTagIdQuery := `
 		SELECT id FROM tags WHERE lower(name) = lower($1)
+	`
+
+	createTagQuery := `
+		INSERT INTO tags(name)
+		VALUES($1)
+		RETURNING id
 	`
 
 	insertPostTagsQuery := `
@@ -100,6 +107,21 @@ func (s *BlogPostStore) Create(ctx context.Context, blogPost * BlogPost) error {
 		).Scan(
 			&currTagId,
 		)
+		if err == sql.ErrNoRows {
+			err = txn.QueryRowContext(
+				ctx,
+				createTagQuery,
+				strings.TrimSpace(misc.CapitalizeString(blogPost.Tags[i])),
+			).Scan(
+				&currTagId,
+			)
+
+			if err != nil {
+				_ = txn.Rollback()
+				return err
+			}
+		}
+
 		if err != nil {
 			_ = txn.Rollback()
 			return err

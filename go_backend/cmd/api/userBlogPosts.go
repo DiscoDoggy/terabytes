@@ -14,7 +14,7 @@ type BlogPostContentPayload struct {
 type CreateBlogPostPayload struct {
 	Title 				string `json:"title"`
 	Description 		string `json:"description"`
-	Content 			[]BlogPostContentPayload `json:"content"` //TODO: CHANGE TO A MORE COMPLEX DATA STRUCT LATER... LATER TO ADAPT TO HANDLE ORDERING NESTED CONTENT AND DIFFERENT TYPES OF MEDIA
+	Content 			[]BlogPostContentPayload `json:"content"`
 	Tags 				[]string `json:"tags"`
 }
 
