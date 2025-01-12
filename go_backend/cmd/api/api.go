@@ -51,6 +51,9 @@ func (app *application) mount() http.Handler {
 		r.Get("/health", app.healthCheckHandler)
 		r.Route("/blogs", func(r chi.Router) {
 			r.Post("/", app.createBlogHandler)
+			r.Route("/{blog_id}", func(r chi.Router) {
+				r.Get("/", app.getBlogByIdHandler)
+			})
 		})
 	}) 
 

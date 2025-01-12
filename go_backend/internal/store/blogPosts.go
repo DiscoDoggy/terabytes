@@ -8,24 +8,26 @@ import (
 )
 
 type BlogPostContent struct {
-	Id 				string
-	BlogPostId 		string
-	ContentType 	string
-	ContentData 	string
-	ContentOrder 	int
+	Id 				string `json:"content_id"`
+	BlogPostId 		string `json:"blog_post_id"` 
+	ContentType 	string `json:"content_type"`
+	ContentData 	string `json:"content_data"`
+	ContentOrder 	int		`json:"content_order"`
 }
 
 type BlogPost struct {
-	Id 		string
-	UserId	string
-	Title	string
-	Description string
-	Content []BlogPostContent
-	Tags 	[]string
-	CreatedAt string
-	UpdatedAt string
+	Id 		string `json:"id"`
+	UserId	string `json:"user_id"`
+	Username string `json:"username"`
+	Title	string `json:"title"`
+	Description string `json:"description"`
+	Content []BlogPostContent `json:"content"`
+	Tags 	[]string `json:"tags"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 
 }
+
 
 type BlogPostStore struct {
 	db *sql.DB
@@ -141,3 +143,97 @@ func (s *BlogPostStore) Create(ctx context.Context, blogPost * BlogPost) error {
 
 	return nil
 }
+
+func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (BlogPost, error) {
+	getBlogQuery := `
+		SELECT 
+			ub.id,
+			a.username,
+			a.id,
+			ub.title,
+			ub.description,
+			ub.created_at,
+			ubc.content_type,
+			ubc.content_data,
+			ubc.content_order,
+			t."name",
+			ubc.id,
+			ub.updated_at
+		FROM user_blogs ub
+		JOIN accounts a ON a.id = ub.account_id
+		JOIN user_blog_content ubc ON ub.id = ubc.user_blog_post_id
+		LEFT JOIN blog_tags bt ON bt.blog_post_id = ub.id
+		LEFT JOIN tags t ON t.id = bt.tag_id
+		WHERE ub.id = $1 
+		ORDER BY ubc.content_order ASC 
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	rows,err := s.db.QueryContext(
+		ctx, 
+		getBlogQuery,
+		blogPostId,
+	)
+
+	var blog BlogPost
+
+	if err != nil {
+		return blog, err
+	}
+	defer rows.Close()
+	
+	content := make([]BlogPostContent, 0)
+	seenBlogContentIds := make(map[string]bool)
+	tags := make([]string, 0)
+	seenTags := make(map[string]bool)
+
+	for rows.Next() {
+		var tagNullStatus sql.NullString
+		var currTag string
+		var currContentId string
+		var currContent BlogPostContent 
+		err := rows.Scan(
+			&blog.Id,
+			&blog.Username,
+			&blog.UserId,
+			&blog.Title,
+			&blog.Description,
+			&blog.CreatedAt,
+			&currContent.ContentType,
+			&currContent.ContentData,
+			&currContent.ContentOrder,
+			&tagNullStatus,
+			&currContentId,
+			&blog.UpdatedAt,
+		)
+		if err != nil {
+			return blog,err
+		}
+
+		if tagNullStatus.Valid {
+			currTag = tagNullStatus.String
+			
+			if _, ok := seenTags[currTag]; !ok {
+				seenTags[currTag] = true
+				tags = append(tags, currTag)
+			}
+
+		}
+
+		if _, ok := seenBlogContentIds[currContentId]; !ok {
+			seenBlogContentIds[currContentId] = true
+			currContent.Id = currContentId
+			currContent.BlogPostId = blog.Id
+			content = append(content, currContent)
+		}
+
+	}
+
+	blog.Tags = tags
+	blog.Content = content
+
+	return blog, nil
+}
+
