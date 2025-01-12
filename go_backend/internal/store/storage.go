@@ -3,14 +3,16 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 )
-
+var ErrNotFound = errors.New("record not found")
 var QueryTimeoutDuration = time.Second * 5
 
 type Storage struct {
 	Posts interface {
 		Create(context.Context, *BlogPost) error
+		GetBlogById(context.Context, string) (*BlogPost, error)
 	}
 
 	Users interface {
