@@ -85,3 +85,19 @@ func (app *application) getBlogByIdHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 }
+
+func (app *application) deleteBlogByIdHandler(w http.ResponseWriter, r *http.Request) {
+	blogId := chi.URLParam(r, "blog_id")
+
+	ctx := r.Context()
+
+	err := app.store.Posts.DeleteBlogById(ctx, blogId)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundError(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+	}
+}

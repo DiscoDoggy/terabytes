@@ -178,7 +178,6 @@ func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (*Bl
 		getBlogQuery,
 		blogPostId,
 	)
-	defer rows.Close()
 
 	var blog BlogPost
 
@@ -188,6 +187,8 @@ func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (*Bl
 	if !rows.Next()  {
 		return nil, ErrNotFound
 	}
+
+	defer rows.Close()
 	
 	content := make([]BlogPostContent, 0)
 	seenBlogContentIds := make(map[string]bool)
@@ -240,5 +241,64 @@ func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (*Bl
 	blog.Content = content
 
 	return &blog, nil
+}
+
+func (s *BlogPostStore) DeleteBlogById (ctx context.Context, blogId string) error {
+	//delete blog tags associated with it and delete blog post
+	//check if id exists
+	blogExistQuery := `
+		SELECT id
+		FROM user_blogs
+		WHERE id = $1
+	` 
+
+	deleteBlogTagQuery := `
+		DELETE FROM blog_tags
+		WHERE blog_post_id = $1
+	`
+
+	deleteBlogQuery := `
+		DELETE FROM user_blogs
+		WHERE id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	txn, err := s.db.Begin()
+	if err != nil {
+		_ = txn.Rollback()
+		return err
+	}
+
+	var existsStatus sql.NullString
+	err = txn.QueryRowContext(ctx, blogExistQuery, blogId).Scan(&existsStatus)
+	if err != nil {
+		switch {
+		case err == sql.ErrNoRows:
+			return ErrNotFound
+		default:
+			return err
+		}
+	}
+
+	_, err = txn.ExecContext(ctx, deleteBlogTagQuery, blogId)
+	if err != nil {
+		_ = txn.Rollback()
+		return err
+	}
+
+	_, err = txn.ExecContext(ctx, deleteBlogQuery, blogId)
+	if err != nil {
+		_ = txn.Rollback()
+		return err
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return err 
+	}
+
+	return nil
 }
 
