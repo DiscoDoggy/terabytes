@@ -9,21 +9,27 @@ import (
 )
 
 type BlogPostContentPayload struct {
-	ContentType 	string 	`json:"content_type"`
-	ContentData 	string	`json:"content_data"`
-	ContentOrder 	int		`json:"content_order"`
+	ContentType 	string 	`json:"content_type" validate:"required"`
+	ContentData 	string	`json:"content_data" validate:"required"`
+	ContentOrder 	int		`json:"content_order" validate:"required"`
 }
 
 type CreateBlogPostPayload struct {
-	Title 				string `json:"title"`
-	Description 		string `json:"description"`
-	Content 			[]BlogPostContentPayload `json:"content"`
+	Title 				string `json:"title" validate:"required,max=300"`
+	Description 		string `json:"description" validate:"required,max=2200"`
+	Content 			[]BlogPostContentPayload `json:"content" validate:"required"`
 	Tags 				[]string `json:"tags"`
 }
 
 func (app *application) createBlogHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreateBlogPostPayload
 	err := readJSON(w, r, &payload)
+	if err != nil {
+		app.badRequestError(w, r, err)
+		return
+	}
+
+	err = Validate.Struct(payload)
 	if err != nil {
 		app.badRequestError(w, r, err)
 		return

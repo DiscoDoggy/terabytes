@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
-	"errors"
+	// "errors"
 	"strings"
 
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/misc"
@@ -178,19 +178,16 @@ func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (*Bl
 		getBlogQuery,
 		blogPostId,
 	)
+	defer rows.Close()
 
 	var blog BlogPost
 
 	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			return nil, ErrNotFound
-		
-		default:
-			return nil, err
-		}
+		return nil, err
 	}
-	defer rows.Close()
+	if !rows.Next()  {
+		return nil, ErrNotFound
+	}
 	
 	content := make([]BlogPostContent, 0)
 	seenBlogContentIds := make(map[string]bool)
