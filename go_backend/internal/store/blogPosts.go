@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
+
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/misc"
 )
 
@@ -144,7 +146,7 @@ func (s *BlogPostStore) Create(ctx context.Context, blogPost * BlogPost) error {
 	return nil
 }
 
-func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (BlogPost, error) {
+func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (*BlogPost, error) {
 	getBlogQuery := `
 		SELECT 
 			ub.id,
@@ -180,7 +182,13 @@ func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (Blo
 	var blog BlogPost
 
 	if err != nil {
-		return blog, err
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrNotFound
+		
+		default:
+			return nil, err
+		}
 	}
 	defer rows.Close()
 	
@@ -209,7 +217,7 @@ func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (Blo
 			&blog.UpdatedAt,
 		)
 		if err != nil {
-			return blog,err
+			return nil,err
 		}
 
 		if tagNullStatus.Valid {
@@ -234,6 +242,6 @@ func (s *BlogPostStore) GetBlogById(ctx context.Context, blogPostId string) (Blo
 	blog.Tags = tags
 	blog.Content = content
 
-	return blog, nil
+	return &blog, nil
 }
 

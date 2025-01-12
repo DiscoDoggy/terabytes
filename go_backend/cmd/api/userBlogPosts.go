@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
@@ -24,7 +25,7 @@ func (app *application) createBlogHandler(w http.ResponseWriter, r *http.Request
 	var payload CreateBlogPostPayload
 	err := readJSON(w, r, &payload)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		app.badRequestError(w, r, err)
 		return
 	}
 
@@ -48,7 +49,7 @@ func (app *application) createBlogHandler(w http.ResponseWriter, r *http.Request
 	
 	err = app.store.Posts.Create(ctx, blogPost)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		app.internalServerError(w, r, err)
 		return
 	}
 
@@ -59,12 +60,22 @@ func (app *application) getBlogByIdHandler(w http.ResponseWriter, r *http.Reques
 
 	ctx := r.Context()
 
-	var blog store.BlogPost
+	var blog *store.BlogPost
 	blog, err := app.store.Posts.GetBlogById(ctx, blogId)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundError(w, r , err)
+			return
+		default:
+			app.internalServerError(w, r, err)
+		}
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, blog)
+	err = writeJSON(w, http.StatusOK, blog)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
 }
