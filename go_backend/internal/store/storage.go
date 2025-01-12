@@ -13,6 +13,7 @@ type Storage struct {
 	Posts interface {
 		Create(context.Context, *BlogPost) error
 		GetBlogById(context.Context, string) (*BlogPost, error)
+		DeleteBlogById(context.Context, string) error
 	}
 
 	Users interface {

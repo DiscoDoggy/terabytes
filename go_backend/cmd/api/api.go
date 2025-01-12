@@ -53,6 +53,7 @@ func (app *application) mount() http.Handler {
 			r.Post("/", app.createBlogHandler)
 			r.Route("/{blog_id}", func(r chi.Router) {
 				r.Get("/", app.getBlogByIdHandler)
+				r.Delete("/", app.deleteBlogByIdHandler)
 			})
 		})
 	}) 
