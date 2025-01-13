@@ -58,6 +58,11 @@ func (app *application) mount() http.Handler {
 				r.Delete("/", app.deleteBlogByIdHandler)
 			})
 		})
+		r.Route("/users", func(r chi.Router) {
+			r.Route("/{user_id}", func(r chi.Router) {
+				r.Get("/", app.getUserByIdHandler)
+			})
+		})
 	}) 
 
 	return r
