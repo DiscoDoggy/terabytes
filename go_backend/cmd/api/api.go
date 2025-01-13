@@ -52,6 +52,8 @@ func (app *application) mount() http.Handler {
 		r.Route("/blogs", func(r chi.Router) {
 			r.Post("/", app.createBlogHandler)
 			r.Route("/{blog_id}", func(r chi.Router) {
+				r.Use(app.blogPostContextMiddleware)
+				
 				r.Get("/", app.getBlogByIdHandler)
 				r.Delete("/", app.deleteBlogByIdHandler)
 			})

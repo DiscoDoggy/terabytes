@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
 	"github.com/go-chi/chi/v5"
 )
+
+type blogKey string
+const blogCtx blogKey = "blog"
 
 type BlogPostContentPayload struct {
 	ContentType 	string 	`json:"content_type" validate:"required"`
@@ -62,24 +67,11 @@ func (app *application) createBlogHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) getBlogByIdHandler(w http.ResponseWriter, r *http.Request) {
-	blogId := chi.URLParam(r,"blog_id")
+	blog := app.getBlogFromCtx(r)
 
-	ctx := r.Context()
+	fmt.Println(len(blog.Content))
 
-	var blog *store.BlogPost
-	blog, err := app.store.Posts.GetBlogById(ctx, blogId)
-	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrNotFound):
-			app.notFoundError(w, r , err)
-			return
-		default:
-			app.internalServerError(w, r, err)
-		}
-		return
-	}
-
-	err = writeJSON(w, http.StatusOK, blog)
+	err := writeJSON(w, http.StatusOK, blog)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
@@ -101,3 +93,32 @@ func (app *application) deleteBlogByIdHandler(w http.ResponseWriter, r *http.Req
 		}
 	}
 }
+
+func (app *application) getBlogFromCtx(r *http.Request) *store.BlogPost {
+	blog, _ := r.Context().Value(blogCtx).(*store.BlogPost)
+	return blog
+}
+
+func (app *application) blogPostContextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
+		blogId := chi.URLParam(r, "blog_id")
+
+		ctx := r.Context()
+		blog, err := app.store.Posts.GetBlogById(ctx, blogId)
+		if err != nil {
+			switch {
+			case errors.Is(err, store.ErrNotFound):
+				app.notFoundError(w, r , err)
+				return
+			default:
+				app.internalServerError(w, r, err)
+			}
+			return
+		}
+
+		ctx = context.WithValue(ctx, blogCtx, blog)
+		next.ServeHTTP(w, r.WithContext(ctx))
+
+	})
+}
+
