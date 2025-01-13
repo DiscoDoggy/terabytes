@@ -19,6 +19,7 @@ type Storage struct {
 	Users interface {
 		Create(context.Context) error
 		GetUserById(context.Context, string) (*User, error)
+		FollowUser(context.Context, string, string) error
 	}
 }
 
