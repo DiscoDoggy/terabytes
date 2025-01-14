@@ -23,13 +23,17 @@ func (app *application) getUserByIdHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (app *application) getUserFeedHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request) {
 	userToFollow := app.getUserFromCtx(r)
-	tempCurrUser := "9efacfaf-2893-4665-b223-0ba333e04137"
+	tempCurrUser := "9efacfaf-2893-4665-b223-0ba333e04137" //TODO: CHANGE WHEN AUTH CAN FEED USER ID
 
 	ctx := r.Context()
 
-	err := app.store.Users.FollowUser(ctx, tempCurrUser, userToFollow.Id)
+	err := app.store.Followers.FollowUser(ctx, tempCurrUser, userToFollow.Id)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
@@ -42,11 +46,11 @@ func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request
 
 func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	userToFollow := app.getUserFromCtx(r)
-	tempCurrUser := "9efacfaf-2893-4665-b223-0ba333e04137"
+	tempCurrUser := "9efacfaf-2893-4665-b223-0ba333e04137" //TODO: CHANGE WHEN AUTH CAN FEED USER ID
 
 	ctx := r.Context()
 
-	err := app.store.Users.UnfollowUser(ctx, tempCurrUser, userToFollow.Id)
+	err := app.store.Followers.UnfollowUser(ctx, tempCurrUser, userToFollow.Id)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
