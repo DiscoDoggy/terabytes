@@ -20,6 +20,7 @@ type Storage struct {
 		Create(context.Context) error
 		GetUserById(context.Context, string) (*User, error)
 		FollowUser(context.Context, string, string) error
+		UnfollowUser(context.Context, string, string) error
 	}
 }
 
