@@ -1,16 +1,61 @@
 package main
 
 import (
-	"net/http"
-	"errors"
 	"context"
+	"errors"
+	"net/http"
 
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type userKey string
 const userCtx userKey = "user"
+
+type UserPayload struct {
+	Username string `json:"username"`
+	Email string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (app * application) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
+	var userPayload UserPayload
+	err := readJSON(w, r, &userPayload)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	ctx := r.Context()
+
+	//hash password
+	hashedPwd, err := app.hashPassword(userPayload.Password)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	err = app.store.Users.Create(
+		ctx,
+		store.User{
+			Username: userPayload.Username,
+			Email: userPayload.Email,
+			Password: hashedPwd,
+		},
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrConflict):
+			app.resourceConflictError(w, r, err)
+			return
+		default:
+			app.internalServerError(w, r, err)
+			return
+		}
+	}
+}
 
 func (app *application) getUserByIdHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -71,6 +116,20 @@ func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Reque
 			app.internalServerError(w, r, err)
 		}
 	}
+}
+
+func (app *application) hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes), nil
+}
+
+func (app *application) checkPasswords(password string, hash string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err
 }
 
 func (app *application) getUserFromCtx(r *http.Request) *store.User {

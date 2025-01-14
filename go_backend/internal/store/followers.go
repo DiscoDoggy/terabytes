@@ -12,7 +12,7 @@ type FollowersStore struct {
 func (s *FollowersStore) FollowUser(ctx context.Context, userId string, toFollowId string) error {
 	//check if userId and ToFollowID exist as users
 	insertFollowerQuery := `
-		INSERT followers(user_id, follower_id)
+		INSERT INTO followers(user_id, follower_id)
 		VALUES($1, $2)
 	`
 
@@ -41,7 +41,7 @@ func (s *FollowersStore) UnfollowUser(ctx context.Context, userId string, toUnfo
 	`
 
 	unFollowQuery := `
-		DELETE FROM followers
+		DELETE followers
 		WHERE user_id = $1 AND follower_id = $2
 	`
 

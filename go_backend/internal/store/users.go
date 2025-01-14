@@ -18,8 +18,45 @@ type User struct {
 	Created_at string `json:"created_at"`
 }
 
-func (s *UsersStore)Create(ctx context.Context) error {
+func (s *UsersStore)Create(ctx context.Context, user User) error {
+	//check if user name or email is already registered
+	userAlreadyExistsQuery := `
+		SELECT COUNT(*)
+		FROM accounts
+		WHERE username = $1 OR email = $2
+	`
+
+	insertUserQuery := `
+		INSERT INTO accounts(username, email, password)
+		VALUES($1, $2, $3)
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	var numResults int
+	err := s.db.QueryRowContext(ctx, userAlreadyExistsQuery, user.Username, user.Email).Scan(&numResults)
+	if err != nil {
+		return err
+	}
+
+	if numResults > 0 {
+		return ErrConflict
+	}
+
+	_, err = s.db.ExecContext(ctx, 
+		insertUserQuery, 
+		user.Username, 
+		user.Email,
+		user.Password,
+	)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
+
 }
 
 func (s *UsersStore)GetUserById(ctx context.Context, userId string) (*User, error) {
@@ -106,7 +143,10 @@ func (s *UsersStore) GetUserFeed(ctx context.Context, userId string) ([]FeedBlog
 		}
 
 		var tags []Tag
-		err = json.Unmarshal([]byte(feedTags), tags)
+		err = json.Unmarshal([]byte(feedTags), &tags)
+		if err != nil {
+			return nil, err
+		}
 
 		blogPost.Tags = tags
 

@@ -7,6 +7,7 @@ import (
 	"time"
 )
 var ErrNotFound = errors.New("record not found")
+var ErrConflict = errors.New("input information conflicts with already existing information")
 var QueryTimeoutDuration = time.Second * 5
 
 type Storage struct {
@@ -17,7 +18,7 @@ type Storage struct {
 	}
 
 	Users interface {
-		Create(context.Context) error
+		Create(context.Context, User) error
 		GetUserById(context.Context, string) (*User, error)
 		GetUserFeed(context.Context, string) ([]FeedBlogPost, error) 
 		

@@ -17,7 +17,7 @@ func main() {
 	cfg := config{
 		serverAddr: env.GetString("HOST", ":8000"),
 		db: dbConfig{
-			addr: assembleDBURL(),
+			addr: AssembleDBURL(),
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 5),
 			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 5),
 			maxIdleTime: env.GetString("DB_MAX_IDLE_TIME", "15m"),
@@ -45,7 +45,7 @@ func main() {
 	log.Fatal(app.run(mux))
 }
 
-func assembleDBURL() string {
+func AssembleDBURL() string {
 	godotenv.Load("secrets.env")
 
 	dbUname := env.GetString("DB_USERNAME", "root")
@@ -55,6 +55,6 @@ func assembleDBURL() string {
 	dbPassword := env.GetString("DB_PASSWORD", "admin")
 
 	dbConnectionLink := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", dbUname, dbPassword, dbUrl, dbPort, dbName)
-
+	fmt.Println(dbConnectionLink)
 	return dbConnectionLink	
 }
