@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
-
+	"encoding/json"
 )
 
 type UsersStore struct {
@@ -58,6 +58,61 @@ func (s *UsersStore)GetUserById(ctx context.Context, userId string) (*User, erro
 	
 }
 
-func (s *UsersStore) GetUserFeed(ctx context.Context, Context, userId string) (*FeedBlogPost, error) {
-	
+func (s *UsersStore) GetUserFeed(ctx context.Context, userId string) ([]FeedBlogPost, error) {
+	feedQuery := `
+		SELECT
+			ub.id AS blog_post_id,
+			a.id AS account_id,
+			a.username,
+			ub.title,
+			ub.description,
+			ub.created_at,
+			COALESCE(
+				JSONB_AGG(
+					JSONB_BUILD_OBJECT('tag_id', bt.tag_id, 'tag_name', t."name")
+				) FILTER (WHERE t.id IS NOT NULL), '[]'
+			) AS tags
+		FROM user_blogs ub
+		JOIN accounts a ON a.id = ub.account_id
+		JOIN followers f ON f.follower_id = a.id 
+		LEFT JOIN tags t ON t.blog_id = ub.id 
+		LEFT JOIN blog_tags bt ON bt.tag_id = t.id 
+		WHERE f.user_id = $1
+		ORDER BY ub.created_at DESC
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	rows, err := s.db.QueryContext(ctx, feedQuery, userId)
+	if err != nil {
+		return nil, err
+	}
+	feed := make([]FeedBlogPost, 0)
+	for rows.Next() {
+		var blogPost FeedBlogPost
+		var feedTags string
+		err := rows.Scan(
+			&blogPost.Id,
+			&blogPost.UserId,
+			&blogPost.Username,
+			&blogPost.Title,
+			&blogPost.Description,
+			&blogPost.CreatedAt,
+			&feedTags,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		var tags []Tag
+		err = json.Unmarshal([]byte(feedTags), tags)
+
+		blogPost.Tags = tags
+
+		feed = append(feed, blogPost)
+
+	}
+
+	return feed, nil
 }

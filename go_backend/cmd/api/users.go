@@ -24,7 +24,19 @@ func (app *application) getUserByIdHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) getUserFeedHandler(w http.ResponseWriter, r *http.Request) {
+	user := app.getUserFromCtx(r)
 
+	ctx := r.Context()
+
+	userFeed, err := app.store.Users.GetUserFeed(ctx, user.Id)
+	if err != nil {
+		app.internalServerError(w, r, err)
+	}
+
+	err = writeJSON(w, http.StatusOK, userFeed)
+	if err != nil {
+		app.internalServerError(w, r, err)
+	}
 }
 
 func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request) {

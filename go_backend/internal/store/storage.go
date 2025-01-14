@@ -19,7 +19,7 @@ type Storage struct {
 	Users interface {
 		Create(context.Context) error
 		GetUserById(context.Context, string) (*User, error)
-		GetUserFeed(context.Context, string) (*Feed, error) 
+		GetUserFeed(context.Context, string) ([]FeedBlogPost, error) 
 		
 	}
 
@@ -32,7 +32,7 @@ type Storage struct {
 func NewStorage(db *sql.DB) Storage {
 	return Storage {
 		Posts: &BlogPostStore{db},
-		Users: &UsersStore {db},
-		Followers: &FollowersStore {db},
+		Users: &UsersStore{db},
+		Followers: &FollowersStore{db},
 	}
 }
