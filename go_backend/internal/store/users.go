@@ -112,9 +112,10 @@ func (s *UsersStore) GetUserFeed(ctx context.Context, userId string) ([]FeedBlog
 		FROM user_blogs ub
 		JOIN accounts a ON a.id = ub.account_id
 		JOIN followers f ON f.follower_id = a.id 
-		LEFT JOIN tags t ON t.blog_id = ub.id 
-		LEFT JOIN blog_tags bt ON bt.tag_id = t.id 
+		LEFT JOIN blog_tags bt ON bt.blog_post_id = ub.id
+		LEFT JOIN tags t ON t.id = bt.tag_id 
 		WHERE f.user_id = $1
+		GROUP BY ub.id, a.id
 		ORDER BY ub.created_at DESC
 	`
 
