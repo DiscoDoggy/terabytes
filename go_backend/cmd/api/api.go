@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	// "go/doc"
-	"log"
 	"net/http"
 	"time"
 
-	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/swaggo/http-swagger"
+	"go.uber.org/zap"
+
 	"github.com/DiscoDoggy/terabytes/go_backend/docs"
+	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
+
 )
 
 //where PAI lives
@@ -20,6 +21,7 @@ import (
 type application struct {
 	config 	config
 	store 	store.Storage
+	logger *zap.SugaredLogger
 }
 
 type config struct {
@@ -27,7 +29,6 @@ type config struct {
 	db			dbConfig
 	env			string
 	apiURL 	string
-
 }
 
 type dbConfig struct {
@@ -94,7 +95,7 @@ func (app *application) run(mux http.Handler) error {
 		IdleTimeout: time.Minute,
 	}
 
-	log.Printf("Server has started at %s", server.Addr)
+	app.logger.Infow("Server has started","addr", server.Addr, "env", app.config.env)
 
 	return server.ListenAndServe()
 }

@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/db"
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/env"
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
+	
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 )
 
 const version = "0.0.1"
@@ -42,25 +43,35 @@ func main() {
 		env: env.GetString("ENV", "development"),
 		apiURL: env.GetString("EXTERNAL_URL", "localhost:8000"),
 	}
+
+	//logger
+	logger := zap.Must(zap.NewProduction()).Sugar()
+	defer logger.Sync()
+	//Database
 	db, err := db.New(
 		cfg.db.addr, 
 		cfg.db.maxOpenConns, 
 		cfg.db.maxIdleConns, 
 		cfg.db.maxIdleTime,
 	)
+
 	if err != nil {
-		log.Panic(err)
+		logger.Fatal(err)
 	}
+	defer db.Close()
+
+	logger.Info("Database connection pool established")
 	
 	store := store.NewStorage(db)
 
 	app := &application {
 		config: cfg,
 		store: store,
+		logger: logger,
 	}
 
 	mux := app.mount()
-	log.Fatal(app.run(mux))
+	logger.Fatal(app.run(mux))
 }
 
 func AssembleDBURL() string {
@@ -73,6 +84,6 @@ func AssembleDBURL() string {
 	dbPassword := env.GetString("DB_PASSWORD", "admin")
 
 	dbConnectionLink := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", dbUname, dbPassword, dbUrl, dbPort, dbName)
-	fmt.Println(dbConnectionLink)
+
 	return dbConnectionLink	
 }
