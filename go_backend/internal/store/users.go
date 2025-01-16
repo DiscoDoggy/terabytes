@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UsersStore struct {
@@ -14,11 +16,43 @@ type User struct {
 	Id string `json:"id"`
 	Username string `json:"username"`
 	Email string `json:"email"`
-	Password string `json:"-"`
+	Password password `json:"-"`
 	Created_at string `json:"created_at"`
 }
 
-func (s *UsersStore)Create(ctx context.Context, user User) error {
+type password struct {
+	text *string
+	hash []byte
+}
+
+func (p *password) HashPassword(password string) error {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	if err != nil {
+		return err
+	}
+
+	p.text = &password
+	p.hash = bytes
+
+	return nil
+}
+
+func (p *password) CheckPasswords(password string, hash string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err
+}
+
+func (s *UsersStore)CreateAndInvite(ctx context.Context, user *User) error {
+	// For one transaction
+		//create the user
+		//create the email token 
+		//send to user
+	//send to user
+	//if transaction successful commit
+	return nil
+}
+
+func (s *UsersStore)Create(ctx context.Context, user *User) error {
 	//check if user name or email is already registered
 	userAlreadyExistsQuery := `
 		SELECT COUNT(*)

@@ -50,7 +50,7 @@ func Seed(store store.Storage, db *sql.DB) {
 	ctx := context.Background()
 
 	for i := 0; i < len(users); i++ {
-		err := store.Users.Create(ctx, users[i])
+		err := store.Users.Create(ctx, &users[i])
 		if err != nil {
 			log.Println("Failure inserting user", err.Error())
 			continue
@@ -97,8 +97,9 @@ func createRandomUsers() []store.User {
 		tempMockUser := store.User{
 			Username: baseUsername + strconv.Itoa(i),
 			Email: baseUsername + strconv.Itoa(i) + "@email.com",
-			Password: "12345",
 		}
+
+		tempMockUser.Password.HashPassword("12345")
 
 		mockUsers = append(mockUsers, tempMockUser)
 	}
