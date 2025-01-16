@@ -25,3 +25,4 @@ go_backend/.air.toml
 go_backend/bin/
 data_extractors/broken_links.txt
 
+docs

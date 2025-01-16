@@ -41,7 +41,7 @@ func (s *FollowersStore) UnfollowUser(ctx context.Context, userId string, toUnfo
 	`
 
 	unFollowQuery := `
-		DELETE followers
+		DELETE FROM followers
 		WHERE user_id = $1 AND follower_id = $2
 	`
 

@@ -1,15 +1,17 @@
 package main
 
 import (
+	"fmt"
+	// "go/doc"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-
-	// "github.com/DiscoDoggy/terabytes/go_backend/internal/env"
-	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
+	"github.com/swaggo/http-swagger"
+	"github.com/DiscoDoggy/terabytes/go_backend/docs"
 )
 
 //where PAI lives
@@ -24,6 +26,7 @@ type config struct {
 	serverAddr 	string
 	db			dbConfig
 	env			string
+	apiURL 	string
 
 }
 
@@ -49,6 +52,10 @@ func (app *application) mount() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
+
+		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.serverAddr)
+		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
+
 		r.Route("/blogs", func(r chi.Router) {
 			r.Post("/", app.createBlogHandler)
 			r.Route("/{blog_id}", func(r chi.Router) {
@@ -75,7 +82,10 @@ func (app *application) mount() http.Handler {
 }
 
 func (app *application) run(mux http.Handler) error {
-
+	//docs
+	docs.SwaggerInfo.Version = version
+	docs.SwaggerInfo.Host = app.config.apiURL 
+	docs.SwaggerInfo.BasePath = "v1"
 	server := http.Server{
 		Addr: ":8000",
 		Handler: mux,

@@ -95,7 +95,7 @@ func (s *UsersStore)GetUserById(ctx context.Context, userId string) (*User, erro
 	
 }
 
-func (s *UsersStore) GetUserFeed(ctx context.Context, userId string) ([]FeedBlogPost, error) {
+func (s *UsersStore) GetUserFeed(ctx context.Context, userId string, fq PaginatedFeedQuery) ([]FeedBlogPost, error) {
 	feedQuery := `
 		SELECT
 			ub.id AS blog_post_id,
@@ -117,12 +117,14 @@ func (s *UsersStore) GetUserFeed(ctx context.Context, userId string) ([]FeedBlog
 		WHERE f.user_id = $1
 		GROUP BY ub.id, a.id
 		ORDER BY ub.created_at DESC
+		LIMIT $2
+		OFFSET $3
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	rows, err := s.db.QueryContext(ctx, feedQuery, userId)
+	rows, err := s.db.QueryContext(ctx, feedQuery, userId, fq.Limit, fq.Offset)
 	if err != nil {
 		return nil, err
 	}

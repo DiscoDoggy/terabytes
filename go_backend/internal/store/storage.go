@@ -20,7 +20,7 @@ type Storage struct {
 	Users interface {
 		Create(context.Context, User) error
 		GetUserById(context.Context, string) (*User, error)
-		GetUserFeed(context.Context, string) ([]FeedBlogPost, error) 
+		GetUserFeed(context.Context, string, PaginatedFeedQuery) ([]FeedBlogPost, error) 
 		
 	}
 
