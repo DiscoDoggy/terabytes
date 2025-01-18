@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -42,55 +44,75 @@ func (p *password) CheckPasswords(password string, hash string) error {
 	return err
 }
 
-func (s *UsersStore)CreateAndInvite(ctx context.Context, user *User) error {
+func (s *UsersStore)CreateAndInvite(ctx context.Context, user *User, token string, expiry time.Duration) error {
+	return withTx(s.db, ctx, func(tx *sql.Tx) error {
+		err := s.Create(ctx, tx, user)
+		if err != nil {
+			return err
+		}
+
+		err = s.createUserInvite(ctx, tx, token, expiry, user.Id)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	
 	// For one transaction
 		//create the user
 		//create the email token 
-		//send to user
-	//send to user
-	//if transaction successful commit
-	return nil
 }
 
-func (s *UsersStore)Create(ctx context.Context, user *User) error {
-	//check if user name or email is already registered
-	userAlreadyExistsQuery := `
-		SELECT COUNT(*)
-		FROM accounts
-		WHERE username = $1 OR email = $2
-	`
-
-	insertUserQuery := `
-		INSERT INTO accounts(username, email, password)
+func (s *UsersStore) createUserInvite(ctx context.Context, tx *sql.Tx, token string, exp time.Duration, userId string) error {
+	insertInviteQuery := `
+		INSERT INTO user_invitations (token, account_id, expiry)
 		VALUES($1, $2, $3)
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	var numResults int
-	err := s.db.QueryRowContext(ctx, userAlreadyExistsQuery, user.Username, user.Email).Scan(&numResults)
-	if err != nil {
-		return err
-	}
-
-	if numResults > 0 {
-		return ErrConflict
-	}
-
-	_, err = s.db.ExecContext(ctx, 
-		insertUserQuery, 
-		user.Username, 
-		user.Email,
-		user.Password,
-	)
-
+	_, err := tx.ExecContext(ctx, insertInviteQuery, token, userId, time.Now().Add(exp))
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
 
+func (s *UsersStore)Create(ctx context.Context, tx *sql.Tx, user *User) error {
+	insertUserQuery := `
+		INSERT INTO accounts(username, email, password)
+		VALUES($1, $2, $3)
+		RETURNING id, created_at
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	err := tx.QueryRowContext(ctx, 
+		insertUserQuery, 
+		user.Username, 
+		user.Email,
+		user.Password.hash,
+	).Scan(
+		&user.Id,
+		&user.Created_at,
+	)
+
+	if err != nil {
+		switch {
+		case strings.Contains(err.Error(), "duplicate key value violates unique constraint \"unique_accounts_username\""):
+			return ErrUsernameConflict
+		case strings.Contains(err.Error(), "duplicate key value violates unique constraint \"unique_accounts_email\""):
+			return ErrEmailConflict
+		default:
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *UsersStore)GetUserById(ctx context.Context, userId string) (*User, error) {

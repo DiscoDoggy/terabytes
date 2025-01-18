@@ -28,7 +28,12 @@ type config struct {
 	serverAddr 	string
 	db			dbConfig
 	env			string
-	apiURL 	string
+	apiURL 		string
+	mail		mailConfig
+}
+
+type mailConfig struct {
+	exp time.Duration
 }
 
 type dbConfig struct {
@@ -77,6 +82,9 @@ func (app *application) mount() http.Handler {
 			})
 
 		})
+		r.Route("/authentication", func(r chi.Router) {
+			r.Post("/user", app.CreateUserHandler)
+		})
 	}) 
 
 	return r
@@ -86,7 +94,7 @@ func (app *application) run(mux http.Handler) error {
 	//docs
 	docs.SwaggerInfo.Version = version
 	docs.SwaggerInfo.Host = app.config.apiURL 
-	docs.SwaggerInfo.BasePath = "v1"
+	docs.SwaggerInfo.BasePath = "/v1"
 	server := http.Server{
 		Addr: ":8000",
 		Handler: mux,

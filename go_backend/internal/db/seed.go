@@ -49,8 +49,10 @@ func Seed(store store.Storage, db *sql.DB) {
 	
 	ctx := context.Background()
 
+	tx, _ := db.BeginTx(ctx, nil)
+
 	for i := 0; i < len(users); i++ {
-		err := store.Users.Create(ctx, &users[i])
+		err := store.Users.Create(ctx, tx, &users[i])
 		if err != nil {
 			log.Println("Failure inserting user", err.Error())
 			continue

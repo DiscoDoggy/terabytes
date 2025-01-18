@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/db"
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/env"
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
-	
+
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
@@ -42,6 +43,9 @@ func main() {
 		},
 		env: env.GetString("ENV", "development"),
 		apiURL: env.GetString("EXTERNAL_URL", "localhost:8000"),
+		mail: mailConfig{
+			exp: time.Hour * 24 * 3,
+		},
 	}
 
 	//logger
