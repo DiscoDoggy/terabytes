@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 
@@ -10,13 +12,15 @@ import (
 )
 
 type userKey string
+
 const userCtx userKey = "user"
 
 type UserPayload struct {
 	Username string `json:"username"`
-	Email string `json:"email"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
 // CreateUser godoc
 //
 //	@Summary		Creates a user
@@ -31,7 +35,6 @@ type UserPayload struct {
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/users [post]
-
 
 // CreateUser godoc
 //
@@ -57,6 +60,7 @@ func (app *application) getUserByIdHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 }
+
 // GetUserFeed godoc
 //
 //	@Summary		Fetches a user's feed
@@ -71,8 +75,8 @@ func (app *application) getUserByIdHandler(w http.ResponseWriter, r *http.Reques
 //	@Security		ApiKeyAuth
 //	@Router			/users/feed [get]
 func (app *application) getUserFeedHandler(w http.ResponseWriter, r *http.Request) {
-	fq := store.PaginatedFeedQuery {
-		Limit: 20,
+	fq := store.PaginatedFeedQuery{
+		Limit:  20,
 		Offset: 0,
 	}
 
@@ -87,7 +91,7 @@ func (app *application) getUserFeedHandler(w http.ResponseWriter, r *http.Reques
 		app.badRequestError(w, r, err)
 		return
 	}
-	
+
 	user := app.getUserFromCtx(r)
 
 	ctx := r.Context()
@@ -102,6 +106,7 @@ func (app *application) getUserFeedHandler(w http.ResponseWriter, r *http.Reques
 		app.internalServerError(w, r, err)
 	}
 }
+
 // FollowUser godoc
 //
 //	@Summary		Follows another user
@@ -179,15 +184,57 @@ func (app *application) userContextMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			switch {
 			case errors.Is(err, store.ErrNotFound):
-				app.notFoundError(w, r , err)
+				app.notFoundError(w, r, err)
 				return
 			default:
 				app.internalServerError(w, r, err)
 			}
-			return 
+			return
 		}
 
 		ctx = context.WithValue(ctx, userCtx, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// FollowUser godoc
+//
+//	@Summary		Activates user account
+//	@Description	Activates user account
+//	@Tags			activation
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		string	true	"token id"
+//	@Success		200	{object}	string
+//	@Failure		400	{object}	error
+//	@Failure		401	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/activate/{token_id} [put]
+func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
+	plainToken := chi.URLParam(r, "token_id")
+	hash := sha256.Sum256([]byte(plainToken))
+	hashToken := hex.EncodeToString(hash[:])
+
+	app.logger.Infow("PLAIN TOKEN IN ACTIVATION", "plainToken", plainToken)
+	app.logger.Infow("Hash Token", "hashTOken", hashToken)
+
+	ctx := r.Context()
+
+	err := app.store.Users.ActivateUser(ctx, hashToken)
+	if err != nil {
+		switch err {
+		case store.ErrNotFound:
+			app.badRequestError(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	err = writeJSON(w, http.StatusNoContent, "")
+	if err != nil {
+		app.internalServerError(w, r, err)
+	}
+
 }

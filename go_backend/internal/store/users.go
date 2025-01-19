@@ -20,6 +20,7 @@ type User struct {
 	Email string `json:"email"`
 	Password password `json:"-"`
 	Created_at string `json:"created_at"`
+	IsActivated bool `json:"is_activated"`
 }
 
 type password struct {
@@ -200,6 +201,7 @@ func (s *UsersStore) GetUserFeed(ctx context.Context, userId string, fq Paginate
 		if err != nil {
 			return nil, err
 		}
+	defer rows.Close()
 
 		var tags []Tag
 		err = json.Unmarshal([]byte(feedTags), &tags)
@@ -214,4 +216,101 @@ func (s *UsersStore) GetUserFeed(ctx context.Context, userId string, fq Paginate
 	}
 
 	return feed, nil
+}
+
+func(s *UsersStore) ActivateUser(ctx context.Context, hashToken string) error {
+	return withTx(s.db, ctx, func(tx *sql.Tx) error {
+		user, err := s.getUserFromInvitation(ctx, tx, hashToken)
+		if err != nil {
+			return err
+		}
+
+		user.IsActivated = true
+		err = s.updateUserActivation(ctx, tx, user)
+		if err != nil {
+			return err
+		}
+
+		err = s.cleanUserInvitations(ctx, tx, user)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	})
+
+}
+
+func (s *UsersStore) updateUserActivation(ctx context.Context, tx *sql.Tx, user *User) error {
+	updateUserActivationQuery := `
+		UPDATE accounts 
+		SET is_activated = true
+		WHERE id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	_, err := tx.ExecContext(ctx, updateUserActivationQuery, user.Id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+	
+}
+
+func (s *UsersStore) cleanUserInvitations(ctx context.Context, tx *sql.Tx, user *User) error {
+	deleteInvitationQuery := `
+		DELETE FROM user_invitations
+		WHERE account_id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	_, err := tx.ExecContext(ctx, deleteInvitationQuery, user.Id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *UsersStore) getUserFromInvitation(ctx context.Context, tx *sql.Tx, token string) (*User,error) {
+	getUserByTokenQuery := `
+		SELECT 
+			a.id, a.username, a.email, a.created_at, a.is_activated
+		FROM accounts a
+		JOIN user_invitations ui ON a.id = ui.account_id
+		WHERE ui.token = $1 AND ui.expiry > $2
+	`	
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+	user := &User{}
+	err := tx.QueryRowContext(
+		ctx,
+		getUserByTokenQuery, 
+		token, 
+		time.Now(),
+	).Scan(
+		&user.Id,
+		&user.Username,
+		&user.Email,
+		&user.Created_at,
+		&user.IsActivated,
+	)
+	if err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			return nil, ErrNotFound
+		default:
+			return nil, err
+		}
+		
+	}
+
+	return user, nil
+
 }

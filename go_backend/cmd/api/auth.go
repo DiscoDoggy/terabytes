@@ -4,12 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
 	"github.com/google/uuid"
 )
-
 
 // CreateUser godoc
 //
@@ -40,6 +40,9 @@ func (app *application) CreateUserHandler(w http.ResponseWriter, r *http.Request
 	//store token in DB hash
 	hash := sha256.Sum256([]byte(plainToken))
 	hashToken := hex.EncodeToString(hash[:])
+
+	fmt.Println("PLAIN TOKEN:", plainToken)
+	app.logger.Infow("PLAIN TOKEN", "token", plainToken)
 
 	user := &store.User{
 		Username: userPayload.Username,

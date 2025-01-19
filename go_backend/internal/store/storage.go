@@ -25,6 +25,7 @@ type Storage struct {
 		GetUserById(context.Context, string) (*User, error)
 		GetUserFeed(context.Context, string, PaginatedFeedQuery) ([]FeedBlogPost, error)
 		CreateAndInvite(context.Context, *User, string, time.Duration) error
+		ActivateUser(context.Context, string) error
 		
 	}
 
