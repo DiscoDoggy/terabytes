@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 from readability import Document
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
 import feedparser
 import requests
 import logging
@@ -132,6 +133,8 @@ class BlogParser:
         essential_content_body = cleaned_blog_html.body
         all_blog_content = EssentialBlogHTMLContent()
         with open("parsed_response.txt", "a", encoding="utf-8") as file:
+            print(f"----COMPANY BLOG LINK ------")
+            print(f"{self.blog_link}")
             for child in essential_content_body.descendants:
                 tag_to_content = {}
                 if child.name == "p":
@@ -144,11 +147,18 @@ class BlogParser:
                     tag_to_content[child.name] = child.text
 
                 elif child.name == "img":
-                    if "src" not in child:
-                        continue
+                    if not child.has_attr("src"):
+                        continue 
+                    image_link = child["src"]
+                    if "http" not in image_link:
+                        full_url = self.blog_link
+                        parsed_url = urlparse(full_url)
+                        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+                        image_link = urljoin(base_url, image_link)                        
+                    
                     file.writelines("\n-----This is an image------\n")
-                    file.writelines(child["src"])
-                    tag_to_content[child.name] = child["src"]
+                    file.writelines(image_link)
+                    tag_to_content[child.name] = image_link
                 elif child.name == "li":
                     file.writelines("\n-------THIS IS A LIST ITEM------\n")
                     file.writelines(child.text)
