@@ -30,6 +30,21 @@ type BlogPost struct {
 
 }
 
+type FeedBlogPost struct {
+	Id 		string `json:"id"`
+	UserId	string `json:"user_id"`
+	Username string `json:"username"`
+	Title	string `json:"title"`
+	Description string `json:"description"`
+	Tags 	[]Tag `json:"tags"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+type Tag struct {
+	Id int `json:"tag_id"`
+	Name string `json:"tag_name"`
+}
 
 type BlogPostStore struct {
 	db *sql.DB

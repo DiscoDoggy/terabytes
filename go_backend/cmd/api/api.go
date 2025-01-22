@@ -1,15 +1,18 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/swaggo/http-swagger"
+	"go.uber.org/zap"
 
-	// "github.com/DiscoDoggy/terabytes/go_backend/internal/env"
+	"github.com/DiscoDoggy/terabytes/go_backend/docs"
 	"github.com/DiscoDoggy/terabytes/go_backend/internal/store"
+
 )
 
 //where PAI lives
@@ -18,13 +21,19 @@ import (
 type application struct {
 	config 	config
 	store 	store.Storage
+	logger *zap.SugaredLogger
 }
 
 type config struct {
 	serverAddr 	string
 	db			dbConfig
 	env			string
+	apiURL 		string
+	mail		mailConfig
+}
 
+type mailConfig struct {
+	exp time.Duration
 }
 
 type dbConfig struct {
@@ -49,6 +58,10 @@ func (app *application) mount() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
+
+		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.serverAddr)
+		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
+
 		r.Route("/blogs", func(r chi.Router) {
 			r.Post("/", app.createBlogHandler)
 			r.Route("/{blog_id}", func(r chi.Router) {
@@ -58,13 +71,31 @@ func (app *application) mount() http.Handler {
 				r.Delete("/", app.deleteBlogByIdHandler)
 			})
 		})
+		r.Route("/users", func(r chi.Router) {
+			r.Put("/activate/{token_id}", app.activateUserHandler)
+			r.Route("/{user_id}", func(r chi.Router) {
+				r.Use(app.userContextMiddleware)
+
+				r.Get("/", app.getUserByIdHandler)
+				r.Get("/feed", app.getUserFeedHandler)
+				r.Put("/follow", app.followUserHandler)
+				r.Delete("/unfollow", app.unfollowUserHandler)
+			})
+
+		})
+		r.Route("/authentication", func(r chi.Router) {
+			r.Post("/user", app.CreateUserHandler)
+		})
 	}) 
 
 	return r
 }
 
 func (app *application) run(mux http.Handler) error {
-
+	//docs
+	docs.SwaggerInfo.Version = version
+	docs.SwaggerInfo.Host = app.config.apiURL 
+	docs.SwaggerInfo.BasePath = "/v1"
 	server := http.Server{
 		Addr: ":8000",
 		Handler: mux,
@@ -73,7 +104,7 @@ func (app *application) run(mux http.Handler) error {
 		IdleTimeout: time.Minute,
 	}
 
-	log.Printf("Server has started at %s", server.Addr)
+	app.logger.Infow("Server has started","addr", server.Addr, "env", app.config.env)
 
 	return server.ListenAndServe()
 }

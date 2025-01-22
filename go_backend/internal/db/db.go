@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"time"
-	"log"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -31,8 +30,6 @@ func New(addr string, maxOpenConns int,
 		if err != nil {
 			return nil, err
 		}
-
-		log.Println("Database connection successful")
 
 		return db, nil
 }

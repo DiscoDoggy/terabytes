@@ -26,6 +26,20 @@ type CreateBlogPostPayload struct {
 	Tags 				[]string `json:"tags"`
 }
 
+// CreateBlogPost godoc
+//
+//	@Summary		Creates a user blog post
+//	@Description	Creates a user blog post
+//	@Tags			user_blogs
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		CreateBlogPostPayload	true	"BlogPost payload"
+//	@Success		200		{object}	string
+//	@Failure		400		{object}	error
+//	@Failure		401		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/blogs [post]
 func (app *application) createBlogHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreateBlogPostPayload
 	err := readJSON(w, r, &payload)
@@ -66,6 +80,20 @@ func (app *application) createBlogHandler(w http.ResponseWriter, r *http.Request
 
 }
 
+// GetBlogById godoc
+//
+//	@Summary		Fetches a user blog post
+//	@Description	Fetches a user blog post
+//	@Tags			user_blogs
+//	@Accept			json
+//	@Produce		json
+//	@Param			blog_id	path		string	true	"blog post ID"
+//	@Success		200		{object}	store.BlogPost
+//	@Failure		400		{object}	error
+//	@Failure		401		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/blogs/{blog_id} [get]
 func (app *application) getBlogByIdHandler(w http.ResponseWriter, r *http.Request) {
 	blog := app.getBlogFromCtx(r)
 
@@ -78,6 +106,21 @@ func (app *application) getBlogByIdHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+
+// DeleteBlogById godoc
+//
+//	@Summary		Deletes a user blog post
+//	@Description	Deletes a user blog post
+//	@Tags			user_blogs
+//	@Accept			json
+//	@Produce		json
+//	@Param			blog_id	path		string	true	"blog post ID"
+//	@Success		200		{object}	string
+//	@Failure		400		{object}	error
+//	@Failure		401		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/blogs/{blog_id} [delete]
 func (app *application) deleteBlogByIdHandler(w http.ResponseWriter, r *http.Request) {
 	blogId := chi.URLParam(r, "blog_id")
 
