@@ -18,6 +18,7 @@ type User struct {
 	Id string `json:"id"`
 	Username string `json:"username"`
 	Email string `json:"email"`
+	PhoneNumber string `json:"phone_number"`
 	Password password `json:"-"`
 	Created_at string `json:"created_at"`
 	IsActivated bool `json:"is_activated"`
@@ -84,8 +85,8 @@ func (s *UsersStore) createUserInvite(ctx context.Context, tx *sql.Tx, token str
 
 func (s *UsersStore)Create(ctx context.Context, tx *sql.Tx, user *User) error {
 	insertUserQuery := `
-		INSERT INTO accounts(username, email, password)
-		VALUES($1, $2, $3)
+		INSERT INTO accounts(username, email, password, phone_number)
+		VALUES($1, $2, $3, $4)
 		RETURNING id, created_at
 	`
 
@@ -100,6 +101,7 @@ func (s *UsersStore)Create(ctx context.Context, tx *sql.Tx, user *User) error {
 	).Scan(
 		&user.Id,
 		&user.Created_at,
+		&user.PhoneNumber,
 	)
 
 	if err != nil {

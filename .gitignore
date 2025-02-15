@@ -26,3 +26,7 @@ go_backend/bin/
 data_extractors/broken_links.txt
 
 docs
+
+compose.yaml
+terabytes_postgres_data
+randofile.txt

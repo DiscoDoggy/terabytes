@@ -46,6 +46,7 @@ func (app *application) CreateUserHandler(w http.ResponseWriter, r *http.Request
 
 	user := &store.User{
 		Username: userPayload.Username,
+		PhoneNumber: userPayload.PhoneNumber,
 		Email:    userPayload.Email,
 	}
 

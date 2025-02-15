@@ -18,6 +18,7 @@ const userCtx userKey = "user"
 type UserPayload struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
+	PhoneNumber string `json:"phone_number"`
 	Password string `json:"password"`
 }
 
@@ -204,11 +205,11 @@ func (app *application) userContextMiddleware(next http.Handler) http.Handler {
 //	@Tags			activation
 //	@Accept			json
 //	@Produce		json
-//	@Param			id	path		string	true	"token id"
-//	@Success		200	{object}	string
-//	@Failure		400	{object}	error
-//	@Failure		401	{object}	error
-//	@Failure		500	{object}	error
+//	@Param			token_id	path		string	true	"token id"
+//	@Success		200			{object}	string
+//	@Failure		400			{object}	error
+//	@Failure		401			{object}	error
+//	@Failure		500			{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/users/activate/{token_id} [put]
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
